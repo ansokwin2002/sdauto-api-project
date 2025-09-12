@@ -1,0 +1,594 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\ProductRequest;
+use App\Http\Requests\BulkProductRequest;
+use App\Http\Resources\ProductCollection;
+use App\Http\Resources\ProductResource;
+use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+
+class ProductController extends Controller
+{
+    /**
+     * Display a listing of products
+     * GET /api/products
+     */
+    public function index(Request $request)
+    {
+        try {
+            $query = Product::query();
+
+            // Search functionality
+            if ($request->filled('search')) {
+                $query->search($request->get('search'));
+            }
+
+            // Filter by brand
+            if ($request->filled('brand')) {
+                $query->where('brand', $request->get('brand'));
+            }
+
+            // Filter by category
+            if ($request->filled('category')) {
+                $query->where('category', $request->get('category'));
+            }
+
+            // Filter by condition
+            if ($request->filled('condition')) {
+                $query->where('condition', $request->get('condition'));
+            }
+
+            // Filter by stock status
+            if ($request->filled('stock_status')) {
+                $stockStatus = $request->get('stock_status');
+                switch ($stockStatus) {
+                    case 'in_stock':
+                        $query->inStock();
+                        break;
+                    case 'out_of_stock':
+                        $query->outOfStock();
+                        break;
+                    case 'low_stock':
+                        $query->lowStock();
+                        break;
+                }
+            }
+
+            // Filter by discount/sale status
+            if ($request->filled('on_sale')) {
+                if ($request->boolean('on_sale')) {
+                    $query->onDiscount();
+                }
+            }
+
+            // Filter by active status
+            if ($request->has('active')) {
+                $query->where('is_active', $request->boolean('active'));
+            } else {
+                $query->active(); // Default to active products
+            }
+
+            // Price range filter
+            if ($request->filled('min_price')) {
+                $query->where('price', '>=', $request->get('min_price'));
+            }
+            if ($request->filled('max_price')) {
+                $query->where('price', '<=', $request->get('max_price'));
+            }
+
+            // Original price range filter
+            if ($request->filled('min_original_price')) {
+                $query->where('original_price', '>=', $request->get('min_original_price'));
+            }
+            if ($request->filled('max_original_price')) {
+                $query->where('original_price', '<=', $request->get('max_original_price'));
+            }
+
+            // Quantity range filter
+            if ($request->filled('min_quantity')) {
+                $query->where('quantity', '>=', $request->get('min_quantity'));
+            }
+            if ($request->filled('max_quantity')) {
+                $query->where('quantity', '<=', $request->get('max_quantity'));
+            }
+
+            // Sorting
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            
+            // Validate sort fields
+            $allowedSortFields = ['id', 'name', 'brand', 'category', 'price', 'original_price', 'quantity', 'created_at', 'updated_at'];
+            if (!in_array($sortBy, $allowedSortFields)) {
+                $sortBy = 'created_at';
+            }
+            
+            $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
+
+            // Pagination
+            $perPage = min($request->get('per_page', 15), 100);
+            $products = $query->paginate($perPage);
+
+            return new ProductCollection($products);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching products',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Store a newly created product
+     * POST /api/products
+     */
+    public function store(ProductRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::create($request->validated());
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product created successfully',
+                'data' => new ProductResource($product)
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Display the specified product
+     * GET /api/products/{id}
+     */
+    public function show($id)
+    {
+        try {
+            $product = Product::findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => new ProductResource($product)
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update the specified product
+     * PUT/PATCH /api/products/{id}
+     */
+    public function update(ProductRequest $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($id);
+            $product->update($request->validated());
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully',
+                'data' => new ProductResource($product->fresh())
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified product
+     * DELETE /api/products/{id}
+     */
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($id);
+            $product->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully'
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all unique brands
+     * GET /api/products/brands
+     */
+    public function getBrands()
+    {
+        try {
+            $brands = Product::select('brand')
+                ->distinct()
+                ->where('is_active', true)
+                ->whereNotNull('brand')
+                ->orderBy('brand')
+                ->pluck('brand')
+                ->filter()
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $brands
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching brands',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all unique categories
+     * GET /api/products/categories
+     */
+    public function getCategories()
+    {
+        try {
+            $categories = Product::select('category')
+                ->distinct()
+                ->where('is_active', true)
+                ->whereNotNull('category')
+                ->orderBy('category')
+                ->pluck('category')
+                ->filter()
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $categories
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching categories',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get products on sale/discount
+     * GET /api/products/on-sale
+     */
+    public function getOnSaleProducts(Request $request)
+    {
+        try {
+            $query = Product::onDiscount()->active();
+
+            // Pagination
+            $perPage = min($request->get('per_page', 15), 100);
+            $products = $query->paginate($perPage);
+
+            return new ProductCollection($products);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching sale products',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update product stock quantity
+     * PATCH /api/products/{id}/stock
+     */
+    public function updateStock(Request $request, $id)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:0|max:999999',
+            'operation' => 'in:set,add,subtract'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($id);
+            
+            $operation = $request->get('operation', 'set');
+            $quantity = $request->get('quantity');
+
+            switch ($operation) {
+                case 'add':
+                    $newQuantity = $product->quantity + $quantity;
+                    break;
+                case 'subtract':
+                    $newQuantity = max(0, $product->quantity - $quantity);
+                    break;
+                default: // 'set'
+                    $newQuantity = $quantity;
+                    break;
+            }
+
+            $product->quantity = min($newQuantity, 999999);
+            $product->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock updated successfully',
+                'data' => new ProductResource($product)
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating stock',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Apply discount to product
+     * PATCH /api/products/{id}/discount
+     */
+    public function applyDiscount(Request $request, $id)
+    {
+        $request->validate([
+            'discount_percentage' => 'required|numeric|min:0|max:100',
+            'set_original_price' => 'boolean'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($id);
+            $discountPercentage = $request->get('discount_percentage');
+            $setOriginalPrice = $request->boolean('set_original_price', true);
+
+            // Set original price if not set and requested
+            if ($setOriginalPrice && !$product->original_price) {
+                $product->original_price = $product->price;
+            }
+
+            // Calculate new price
+            $basePrice = $product->original_price ?? $product->price;
+            $discountAmount = $basePrice * ($discountPercentage / 100);
+            $product->price = $basePrice - $discountAmount;
+
+            $product->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Discount applied successfully',
+                'data' => new ProductResource($product)
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error applying discount',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk operations
+     * POST /api/products/bulk
+     */
+    public function bulkOperation(BulkProductRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $productIds = $request->get('product_ids');
+            $action = $request->get('action');
+
+            switch ($action) {
+                case 'activate':
+                    Product::whereIn('id', $productIds)->update(['is_active' => true]);
+                    $message = 'Products activated successfully';
+                    break;
+                case 'deactivate':
+                    Product::whereIn('id', $productIds)->update(['is_active' => false]);
+                    $message = 'Products deactivated successfully';
+                    break;
+                case 'delete':
+                    Product::whereIn('id', $productIds)->delete();
+                    $message = 'Products deleted successfully';
+                    break;
+                case 'update_stock':
+                    $quantity = $request->get('quantity');
+                    $operation = $request->get('operation', 'set');
+                    
+                    $products = Product::whereIn('id', $productIds)->get();
+                    foreach ($products as $product) {
+                        switch ($operation) {
+                            case 'add':
+                                $product->quantity = min($product->quantity + $quantity, 999999);
+                                break;
+                            case 'subtract':
+                                $product->quantity = max(0, $product->quantity - $quantity);
+                                break;
+                            default: // 'set'
+                                $product->quantity = $quantity;
+                                break;
+                        }
+                        $product->save();
+                    }
+                    $message = 'Stock updated successfully for all selected products';
+                    break;
+                case 'update_price':
+                    $price = $request->get('price');
+                    $originalPrice = $request->get('original_price');
+                    
+                    $updateData = ['price' => $price];
+                    if ($originalPrice !== null) {
+                        $updateData['original_price'] = $originalPrice;
+                    }
+                    
+                    Product::whereIn('id', $productIds)->update($updateData);
+                    $message = 'Prices updated successfully for all selected products';
+                    break;
+                case 'apply_discount':
+                    $discountPercentage = $request->get('discount_percentage');
+                    
+                    $products = Product::whereIn('id', $productIds)->get();
+                    foreach ($products as $product) {
+                        // Set original price if not set
+                        if (!$product->original_price) {
+                            $product->original_price = $product->price;
+                        }
+                        
+                        // Calculate new price
+                        $basePrice = $product->original_price;
+                        $discountAmount = $basePrice * ($discountPercentage / 100);
+                        $product->price = $basePrice - $discountAmount;
+                        
+                        $product->save();
+                    }
+                    $message = "Discount of {$discountPercentage}% applied successfully to all selected products";
+                    break;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'affected_count' => count($productIds)
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error performing bulk operation',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get product statistics
+     * GET /api/products/stats
+     */
+    public function getStats()
+    {
+        try {
+            $stats = [
+                'total_products' => Product::count(),
+                'active_products' => Product::active()->count(),
+                'inactive_products' => Product::where('is_active', false)->count(),
+                'in_stock_products' => Product::inStock()->count(),
+                'out_of_stock_products' => Product::outOfStock()->count(),
+                'low_stock_products' => Product::lowStock()->count(),
+                'products_on_sale' => Product::onDiscount()->count(),
+                'total_inventory_value' => Product::sum(DB::raw('price * quantity')),
+                'total_original_inventory_value' => Product::sum(DB::raw('COALESCE(original_price, price) * quantity')),
+                'average_price' => Product::avg('price'),
+                'average_original_price' => Product::whereNotNull('original_price')->avg('original_price'),
+                'total_quantity' => Product::sum('quantity'),
+                'total_discount_savings' => Product::whereNotNull('original_price')
+                    ->sum(DB::raw('(original_price - price) * quantity')),
+                'brands_count' => Product::distinct('brand')->count(),
+                'categories_count' => Product::distinct('category')->count()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching statistics',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+}
