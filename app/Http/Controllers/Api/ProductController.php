@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -22,7 +23,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         try {
-                        $query = Product::query();
+            $query = Product::query();
 
             // Search functionality
             /*
@@ -67,6 +68,7 @@ class ProductController extends Controller
                     $query->onDiscount();
                 }
             }
+            */
 
             // Filter by active status
             if ($request->has('active')) {
@@ -76,6 +78,7 @@ class ProductController extends Controller
             }
 
             // Price range filter
+            /*
             if ($request->filled('min_price')) {
                 $query->where('price', '>=', $request->get('min_price'));
             }
@@ -98,19 +101,20 @@ class ProductController extends Controller
             if ($request->filled('max_quantity')) {
                 $query->where('quantity', '<=', $request->get('max_quantity'));
             }
+            */
 
             // Sorting
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
-            
+
             // Validate sort fields
             $allowedSortFields = ['id', 'name', 'brand', 'category', 'price', 'original_price', 'quantity', 'created_at', 'updated_at'];
             if (!in_array($sortBy, $allowedSortFields)) {
                 $sortBy = 'created_at';
             }
-            
+
             $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
-            */
+
 
             // Pagination
             $perPage = min($request->get('per_page', 10), 100);
@@ -136,7 +140,23 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            $product = Product::create($request->validated());
+            $data = $request->validated();
+            $imagePaths = [];
+
+            if ($request->has('image_urls')) {
+                $imagePaths = array_merge($imagePaths, $request->input('image_urls'));
+            }
+
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('products', 'public');
+                    $imagePaths[] = asset('storage/' . $path);
+                }
+            }
+
+            $data['images'] = $imagePaths;
+
+            $product = Product::create($data);
 
             DB::commit();
 
@@ -192,7 +212,24 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            $product->update($request->validated());
+            $data = $request->validated();
+
+            if ($request->has('image_urls') || $request->hasFile('images')) {
+                $imagePaths = [];
+                if ($request->has('image_urls')) {
+                    $imagePaths = array_merge($imagePaths, $request->input('image_urls'));
+                }
+    
+                if ($request->hasFile('images')) {
+                    foreach ($request->file('images') as $image) {
+                        $path = $image->store('products', 'public');
+                        $imagePaths[] = asset('storage/' . $path);
+                    }
+                }
+                $data['images'] = $imagePaths;
+            }
+
+            $product->update($data);
 
             DB::commit();
 
