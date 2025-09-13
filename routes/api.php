@@ -24,7 +24,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::prefix('products')->group(function () {
     // Statistics route (before parameterized routes)
     Route::get('/stats', [ProductController::class, 'getStats']);
-    
+     
     // Filter routes
     Route::get('/brands', [ProductController::class, 'getBrands']);
     Route::get('/categories', [ProductController::class, 'getCategories']);
@@ -36,10 +36,18 @@ Route::prefix('products')->group(function () {
     // Main CRUD routes
     Route::get('/', [ProductController::class, 'index']);
     Route::post('/', [ProductController::class, 'store']);
-    Route::get('/{product}', [ProductController::class, 'show']);
-    Route::put('/{product}', [ProductController::class, 'update']);
-    Route::patch('/{product}', [ProductController::class, 'update']);
-    Route::delete('/{product}', [ProductController::class, 'destroy']);
+    Route::get('/{product}', [ProductController::class, 'show'])->missing(function (Request $request) {
+        return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+    });
+    Route::put('/{product}', [ProductController::class, 'update'])->missing(function (Request $request) {
+        return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+    });
+    Route::patch('/{product}', [ProductController::class, 'update'])->missing(function (Request $request) {
+        return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+    });
+    Route::delete('/{product}', [ProductController::class, 'destroy'])->missing(function (Request $request) {
+        return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+    });
     
     // Stock and pricing management
     Route::patch('/{product}/stock', [ProductController::class, 'updateStock']);

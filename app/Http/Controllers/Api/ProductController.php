@@ -11,6 +11,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class ProductController extends Controller
 {
@@ -21,9 +22,10 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Product::query();
+                        $query = Product::query();
 
             // Search functionality
+            /*
             if ($request->filled('search')) {
                 $query->search($request->get('search'));
             }
@@ -108,9 +110,10 @@ class ProductController extends Controller
             }
             
             $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
+            */
 
             // Pagination
-            $perPage = min($request->get('per_page', 15), 100);
+            $perPage = min($request->get('per_page', 10), 100);
             $products = $query->paginate($perPage);
 
             return new ProductCollection($products);
@@ -158,11 +161,9 @@ class ProductController extends Controller
      * Display the specified product
      * GET /api/products/{id}
      */
-    public function show($id)
+    public function show(Product $product)
     {
         try {
-            $product = Product::findOrFail($id);
-
             return response()->json([
                 'success' => true,
                 'data' => new ProductResource($product)
@@ -186,12 +187,11 @@ class ProductController extends Controller
      * Update the specified product
      * PUT/PATCH /api/products/{id}
      */
-    public function update(ProductRequest $request, $id)
+    public function update(ProductRequest $request, Product $product)
     {
         try {
             DB::beginTransaction();
 
-            $product = Product::findOrFail($id);
             $product->update($request->validated());
 
             DB::commit();
@@ -201,6 +201,22 @@ class ProductController extends Controller
                 'message' => 'Product updated successfully',
                 'data' => new ProductResource($product->fresh())
             ]);
+
+        } catch (QueryException $e) {
+            DB::rollBack();
+            $errorCode = $e->errorInfo[1];
+            if ($errorCode == 1062) { // 1062 is the error code for duplicate entry in MySQL
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The part number already exists for another product.'
+                ], 422);
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
@@ -224,12 +240,11 @@ class ProductController extends Controller
      * Remove the specified product
      * DELETE /api/products/{id}
      */
-    public function destroy($id)
+    public function destroy(Product $product)
     {
         try {
             DB::beginTransaction();
 
-            $product = Product::findOrFail($id);
             $product->delete();
 
             DB::commit();
