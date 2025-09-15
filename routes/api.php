@@ -21,8 +21,12 @@ use App\Http\Controllers\Api\AuthController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('/login', function () {
+    return response()->json(['message' => 'Unauthorized.'], 401);
+})->name('login');
+
 // Protected routes
-// Route::middleware('auth:sanctum')->group(function () {
+
 
     Route::post('/logout', [AuthController::class, 'logout']);
     
@@ -59,4 +63,3 @@ Route::post('/login', [AuthController::class, 'login']);
         Route::patch('/{product}/stock', [ProductController::class, 'updateStock']);
         Route::patch('/{product}/discount', [ProductController::class, 'applyDiscount']);
     });
-// });

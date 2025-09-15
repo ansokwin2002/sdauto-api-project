@@ -155,6 +155,7 @@ class ProductController extends Controller
             }
 
             $data['images'] = $imagePaths;
+            $data['videos'] = $request->has('videos') ? $request->input('videos') : null;
 
             $product = Product::create($data);
 
@@ -227,6 +228,10 @@ class ProductController extends Controller
                     }
                 }
                 $data['images'] = $imagePaths;
+            }
+
+            if ($request->has('videos')) {
+                $data['videos'] = $request->input('videos');
             }
 
             $product->update($data);

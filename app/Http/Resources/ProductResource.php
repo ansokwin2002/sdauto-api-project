@@ -25,7 +25,9 @@ class ProductResource extends JsonResource
             'has_discount' => $this->hasDiscount(),
             'is_on_sale' => $this->isOnSale(),
             'description' => $this->description,
-            'images' => $this->images ?? [],
+            'images' => is_array($this->images) ? array_map(function($image) {
+                return asset('storage/' . $image);
+            }, $this->images) : [],
             'videos' => $this->videos ?? [],
             'primary_image' => $this->primary_image,
             'is_active' => $this->is_active,

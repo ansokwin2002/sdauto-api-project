@@ -14,7 +14,10 @@ class ProductRequest extends FormRequest
 
     public function rules()
     {
-        $productId = $this->route('product') ? $this->route('product')->id : null;
+        $productId = $this->route('product');
+        if (is_object($productId)) {
+            $productId = $productId->id;
+        }
 
         return [
             'name' => 'required|string|max:255',
