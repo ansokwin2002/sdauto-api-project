@@ -62,4 +62,5 @@ Route::get('/login', function () {
         // Stock and pricing management
         Route::patch('/{product}/stock', [ProductController::class, 'updateStock']);
         Route::patch('/{product}/discount', [ProductController::class, 'applyDiscount']);
+        Route::delete('/{product}/images', [ProductController::class, 'deleteImage']);
     });

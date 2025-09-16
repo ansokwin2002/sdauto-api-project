@@ -215,19 +215,41 @@ class ProductController extends Controller
 
             $data = $request->validated();
 
-            if ($request->has('image_urls') || $request->hasFile('images')) {
-                $imagePaths = [];
-                if ($request->has('image_urls')) {
-                    $imagePaths = array_merge($imagePaths, $request->input('image_urls'));
+            // Handle image updates
+            if ($request->has('deleted_images') || $request->hasFile('images') || $request->has('image_urls')) {
+                $currentImages = $product->images ?? [];
+
+                // Remove deleted images
+                if ($request->has('deleted_images')) {
+                    $imagesToDelete = $request->input('deleted_images');
+                    foreach ($imagesToDelete as $imageUrl) {
+                        $path = ltrim(parse_url($imageUrl, PHP_URL_PATH), '/storage/');
+                        if (Storage::disk('public')->exists($path)) {
+                            Storage::disk('public')->delete($path);
+                        }
+                        // Remove from current images
+                        if (($key = array_search($imageUrl, $currentImages)) !== false) {
+                            unset($currentImages[$key]);
+                        }
+                    }
                 }
-    
+
+                $newImagePaths = [];
+                // Add new image URLs
+                if ($request->has('image_urls')) {
+                    $newImagePaths = array_merge($newImagePaths, $request->input('image_urls'));
+                }
+
+                // Add newly uploaded images
                 if ($request->hasFile('images')) {
                     foreach ($request->file('images') as $image) {
                         $path = $image->store('products', 'public');
-                        $imagePaths[] = asset('storage/' . $path);
+                        $newImagePaths[] = asset('storage/' . $path);
                     }
                 }
-                $data['images'] = $imagePaths;
+                
+                // Merge and re-index the array
+                $data['images'] = array_values(array_unique(array_merge($currentImages, $newImagePaths)));
             }
 
             if ($request->has('videos')) {
@@ -253,7 +275,7 @@ class ProductController extends Controller
                     'message' => 'The part number already exists for another product.'
                 ], 422);
             }
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error updating product',
@@ -262,14 +284,14 @@ class ProductController extends Controller
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Product not found'
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error updating product',
@@ -309,6 +331,66 @@ class ProductController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an image from a product
+     * DELETE /api/products/{id}/images
+     */
+    public function deleteImage(Request $request, Product $product)
+    {
+        $request->validate([
+            'image_url' => 'required|string|url'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $imageUrl = $request->input('image_url');
+            $images = $product->images;
+
+            // Find the index of the image to delete
+            $imageIndex = array_search($imageUrl, $images);
+
+            if ($imageIndex === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Image not found on product'
+                ], 404);
+            }
+
+            // Get the path of the image from the URL
+            $path = ltrim(parse_url($imageUrl, PHP_URL_PATH), '/storage/');
+
+            // Delete the physical file
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            // Remove the image from the array
+            array_splice($images, $imageIndex, 1);
+
+            // Re-index the array
+            $product->images = array_values($images);
+            $product->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Image deleted successfully',
+                'data' => new ProductResource($product->fresh())
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting image',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
