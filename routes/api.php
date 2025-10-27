@@ -47,7 +47,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Slider API routes (CRUD, file upload)
     Route::prefix('sliders')->group(function () {
         Route::get('/', [SliderController::class, 'index']);
+        // multipart upload (field: image)
         Route::post('/', [SliderController::class, 'store']);
+        Route::post('/upload', [SliderController::class, 'store']);
+        // create from remote image URL
+        Route::post('/url', [SliderController::class, 'fromUrl']);
+
         Route::get('/{id}', [SliderController::class, 'show']);
         Route::put('/{id}', [SliderController::class, 'update']);
         Route::patch('/{id}', [SliderController::class, 'update']);
