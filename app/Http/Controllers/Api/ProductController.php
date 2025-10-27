@@ -155,7 +155,19 @@ class ProductController extends Controller
             }
 
             $data['images'] = $imagePaths;
-            $data['videos'] = $request->has('videos') ? $request->input('videos') : null;
+            $videoIds = [];
+            if ($request->has('videos')) {
+                foreach ($request->input('videos') as $videoUrl) {
+                    $youtubeRule = new YoutubeUrl();
+                    $youtubeRule->validate('videos', $videoUrl, function ($message) {
+                        // Handle validation failure if necessary, though ProductRequest should catch it
+                    });
+                    if ($youtubeRule->videoId()) {
+                        $videoIds[] = $youtubeRule->videoId();
+                    }
+                }
+            }
+            $data['videos'] = $videoIds;
 
             $product = Product::create($data);
 
@@ -252,8 +264,38 @@ class ProductController extends Controller
                 $data['images'] = array_values(array_unique(array_merge($currentImages, $newImagePaths)));
             }
 
-            if ($request->has('videos')) {
-                $data['videos'] = $request->input('videos');
+            // Handle video updates
+            if ($request->has('deleted_videos') || $request->has('videos')) {
+                $currentVideos = $product->videos ?? [];
+
+                // Remove deleted videos
+                if ($request->has('deleted_videos')) {
+                    $videosToDelete = $request->input('deleted_videos');
+                    foreach ($videosToDelete as $videoUrl) {
+                        $youtubeRule = new YoutubeUrl();
+                        $youtubeRule->validate('videos', $videoUrl, function ($message) {});
+                        $videoIdToDelete = $youtubeRule->videoId();
+
+                        if (($key = array_search($videoIdToDelete, $currentVideos)) !== false) {
+                            unset($currentVideos[$key]);
+                        }
+                    }
+                }
+
+                $newVideoIds = [];
+                // Add new video URLs
+                if ($request->has('videos')) {
+                    foreach ($request->input('videos') as $videoUrl) {
+                        $youtubeRule = new YoutubeUrl();
+                        $youtubeRule->validate('videos', $videoUrl, function ($message) {});
+                        if ($youtubeRule->videoId()) {
+                            $newVideoIds[] = $youtubeRule->videoId();
+                        }
+                    }
+                }
+
+                // Merge and re-index the array
+                $data['videos'] = array_values(array_unique(array_merge($currentVideos, $newVideoIds)));
             }
 
             $product->update($data);
@@ -391,6 +433,71 @@ class ProductController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting image',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a video from a product
+     * DELETE /api/products/{id}/videos
+     */
+    public function deleteVideo(Request $request, Product $product)
+    {
+        $request->validate([
+            'video_url' => 'required|string|url'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $videoUrl = $request->input('video_url');
+            $currentVideos = $product->videos ?? [];
+
+            $youtubeRule = new YoutubeUrl();
+            $youtubeRule->validate('videos', $videoUrl, function ($message) {
+                // Validation message can be ignored here as it's already validated by ProductRequest
+            });
+            $videoIdToDelete = $youtubeRule->videoId();
+
+            if ($videoIdToDelete === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid YouTube video URL provided.'
+                ], 400);
+            }
+
+            // Find the index of the video ID to delete
+            $videoIndex = array_search($videoIdToDelete, $currentVideos);
+
+            if ($videoIndex === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Video not found on product'
+                ], 404);
+            }
+
+            // Remove the video ID from the array
+            unset($currentVideos[$videoIndex]);
+
+            // Re-index the array
+            $product->videos = array_values($currentVideos);
+            $product->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Video deleted successfully',
+                'data' => new ProductResource($product->fresh())
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting video',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }

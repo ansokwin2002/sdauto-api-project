@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\YoutubeUrl;
 
 class ProductRequest extends FormRequest
 {
@@ -39,18 +40,18 @@ class ProductRequest extends FormRequest
                 'max:99999999.99',
                 function ($attribute, $value, $fail) {
                     $originalPrice = $this->input('original_price');
-                    if ($originalPrice && $value > $originalPrice) {
+                    if ($originalPrice > 0 && $value > $originalPrice) {
                         $fail('The current price cannot be higher than the original price.');
                     }
                 },
             ],
             'description' => 'nullable|string|max:2000',
-            'images' => 'nullable|array|max:10',
+            'images' => 'nullable|array|max:20',
             'images.*' => ['bail', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
-            'image_urls' => 'nullable|array|max:10',
+            'image_urls' => 'nullable|array|max:20',
             'image_urls.*' => 'string|url|max:500',
             'videos' => 'nullable|array|max:5',
-            'videos.*' => 'string|url|max:500',
+            'videos.*' => ['string', 'max:500', new YoutubeUrl],
             'is_active' => 'boolean'
         ];
     }
