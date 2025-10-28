@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SliderController;
+use App\Http\Controllers\Api\PolicyController;
+use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\ContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +70,35 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'show']);
         Route::put('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'update']);
         Route::patch('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'update']);
+    });
+
+    // Policy API routes
+    Route::prefix('policies')->group(function () {
+        Route::get('/', [PolicyController::class, 'index']);
+        Route::post('/', [PolicyController::class, 'store']);
+        Route::get('/{id}', [PolicyController::class, 'show']);
+        Route::put('/{id}', [PolicyController::class, 'update']);
+        Route::patch('/{id}', [PolicyController::class, 'update']);
+    });
+
+    // FAQ API routes
+    Route::prefix('faqs')->group(function () {
+        Route::get('/', [FaqController::class, 'index']);
+        Route::post('/', [FaqController::class, 'store']);
+        Route::get('/{id}', [FaqController::class, 'show']);
+        Route::put('/{id}', [FaqController::class, 'update']);
+        Route::patch('/{id}', [FaqController::class, 'update']);
+        Route::delete('/{id}', [FaqController::class, 'destroy']);
+    });
+
+    // Contact API routes
+    Route::prefix('contacts')->group(function () {
+        Route::get('/', [ContactController::class, 'index']);
+        Route::post('/', [ContactController::class, 'store']);
+        Route::get('/{id}', [ContactController::class, 'show']);
+        Route::put('/{id}', [ContactController::class, 'update']);
+        Route::patch('/{id}', [ContactController::class, 'update']);
+        Route::delete('/{id}', [ContactController::class, 'destroy']);
     });
 
     // Product API routes
