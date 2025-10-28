@@ -60,6 +60,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [SliderController::class, 'destroy']);
     });
 
+    // Shipping API routes (no delete per request)
+    Route::prefix('shippings')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ShippingController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\ShippingController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'update']);
+        Route::patch('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'update']);
+    });
+
     // Product API routes
     Route::prefix('products')->group(function () {
         Route::get('/stats', [ProductController::class, 'getStats']);
