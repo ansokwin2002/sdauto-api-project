@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\SliderController;
 use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DeliveryPartnerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +70,12 @@ Route::prefix('public')->group(function () {
 
     // Public Shipping Info - for shipping rates/info
     Route::get('/shipping', [\App\Http\Controllers\Api\ShippingController::class, 'index']);
+
+    // Public Delivery Partners - for frontend display
+    Route::prefix('delivery-partners')->group(function () {
+        Route::get('/', [DeliveryPartnerController::class, 'publicIndex']); // All delivery partners
+        Route::get('/{id}', [DeliveryPartnerController::class, 'publicShow']); // Single delivery partner
+    });
 });
 
 // Protected routes with Sanctum (Admin/Management only)
@@ -164,5 +171,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{product}/discount', [ProductController::class, 'applyDiscount']);
         Route::delete('/{product}/images', [ProductController::class, 'deleteImage']);
         Route::delete('/{product}/videos', [ProductController::class, 'deleteVideo']);
+    });
+
+    // Admin: Delivery Partners Management (CRUD, file upload)
+    Route::prefix('admin/delivery-partners')->group(function () {
+        Route::get('/', [DeliveryPartnerController::class, 'index']);
+        // multipart upload (field: image)
+        Route::post('/', [DeliveryPartnerController::class, 'store']);
+        Route::post('/upload', [DeliveryPartnerController::class, 'store']);
+        // create from remote image URL
+        Route::post('/url', [DeliveryPartnerController::class, 'fromUrl']);
+
+        Route::get('/{id}', [DeliveryPartnerController::class, 'show']);
+        Route::put('/{id}', [DeliveryPartnerController::class, 'update']);
+        Route::patch('/{id}', [DeliveryPartnerController::class, 'update']);
+        // update from remote image URL
+        Route::patch('/{id}/url', [DeliveryPartnerController::class, 'updateFromUrl']);
+        Route::delete('/{id}', [DeliveryPartnerController::class, 'destroy']);
     });
 });

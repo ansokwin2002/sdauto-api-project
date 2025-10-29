@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test URL Link Field</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test URL Link Field</h1>
+    
+    <div class="info">
+        <h3>📋 Field Explanation:</h3>
+        <ul>
+            <li><strong>url_link</strong>: Partner's website URL (stored as text, no download)</li>
+            <li><strong>image_url</strong>: Image file URL (downloaded and stored locally)</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 1: Create with File Upload + URL Link</h2>
+        <p>This should work - url_link is just stored as text</p>
+        
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="title1" value="Test Partner 1" />
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="description1">Test delivery partner with website link</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Website URL (url_link):</label>
+            <input type="url" id="urlLink1" value="https://www.google.com" />
+        </div>
+        
+        <div class="form-group">
+            <label>Image File:</label>
+            <input type="file" id="imageFile1" accept="image/*" />
+        </div>
+        
+        <button onclick="testFileUpload()">Test File Upload</button>
+        <div id="result1" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Create with Image URL + URL Link</h2>
+        <p>This uses both url_link (website) and image_url (image to download)</p>
+        
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="title2" value="Test Partner 2" />
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="description2">Test delivery partner with both URLs</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Website URL (url_link):</label>
+            <input type="url" id="urlLink2" value="https://www.github.com" />
+        </div>
+        
+        <div class="form-group">
+            <label>Image URL (image_url):</label>
+            <input type="url" id="imageUrl2" value="https://via.placeholder.com/300x200.png" />
+        </div>
+        
+        <button onclick="testImageUrl()">Test Image URL</button>
+        <div id="result2" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Create with Only URL Link (No Image)</h2>
+        <p>This should work - only url_link field, no image</p>
+        
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="title3" value="Test Partner 3" />
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="description3">Test delivery partner with only website link</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Website URL (url_link):</label>
+            <input type="url" id="urlLink3" value="https://www.stackoverflow.com" />
+        </div>
+        
+        <button onclick="testUrlLinkOnly()">Test URL Link Only</button>
+        <div id="result3" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        function showResult(resultId, success, message, data = null) {
+            const resultDiv = document.getElementById(resultId);
+            resultDiv.style.display = 'block';
+            resultDiv.className = `result ${success ? 'success' : 'error'}`;
+            
+            let html = `<strong>${success ? '✅ Success' : '❌ Error'}:</strong> ${message}`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            resultDiv.innerHTML = html;
+        }
+
+        async function testFileUpload() {
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title1').value);
+            formData.append('description', document.getElementById('description1').value);
+            formData.append('url_link', document.getElementById('urlLink1').value);
+            
+            const fileInput = document.getElementById('imageFile1');
+            if (fileInput.files[0]) {
+                formData.append('image', fileInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/api/admin/delivery-partners', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResult('result1', data.success, data.message || 'Request completed', data);
+            } catch (error) {
+                showResult('result1', false, 'Network error: ' + error.message);
+            }
+        }
+
+        async function testImageUrl() {
+            const payload = {
+                title: document.getElementById('title2').value,
+                description: document.getElementById('description2').value,
+                url_link: document.getElementById('urlLink2').value,
+                image_url: document.getElementById('imageUrl2').value
+            };
+
+            try {
+                const response = await fetch('/api/admin/delivery-partners/url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                showResult('result2', data.success, data.message || 'Request completed', data);
+            } catch (error) {
+                showResult('result2', false, 'Network error: ' + error.message);
+            }
+        }
+
+        async function testUrlLinkOnly() {
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title3').value);
+            formData.append('description', document.getElementById('description3').value);
+            formData.append('url_link', document.getElementById('urlLink3').value);
+
+            try {
+                const response = await fetch('/api/admin/delivery-partners', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResult('result3', data.success, data.message || 'Request completed', data);
+            } catch (error) {
+                showResult('result3', false, 'Network error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

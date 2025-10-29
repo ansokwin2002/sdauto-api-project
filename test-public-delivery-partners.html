@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Partners Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .partners-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .partner-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .partner-card img {
+            max-width: 100%;
+            height: 150px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: white;
+            padding: 10px;
+        }
+        .partner-card h3 {
+            margin: 10px 0 5px 0;
+            color: #333;
+        }
+        .partner-card p {
+            color: #666;
+            line-height: 1.4;
+        }
+        .partner-card a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .partner-card a:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c66;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .api-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .api-info code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚚 Delivery Partners API Test</h1>
+        
+        <div class="api-info">
+            <h3>Public API Endpoints:</h3>
+            <p><strong>Get All:</strong> <code>GET /api/public/delivery-partners</code></p>
+            <p><strong>Get Single:</strong> <code>GET /api/public/delivery-partners/{id}</code></p>
+            <p><em>Note: These endpoints are public and don't require authentication.</em></p>
+        </div>
+
+        <div>
+            <button onclick="loadDeliveryPartners()">Load All Delivery Partners</button>
+            <button onclick="testSinglePartner()">Test Single Partner (ID: 1)</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Loading delivery partners...
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="test-results" class="test-results" style="display: none;">
+            <h3>API Response:</h3>
+            <pre id="api-response"></pre>
+        </div>
+
+        <div id="partners-container">
+            <div id="partners-grid" class="partners-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/public/delivery-partners';
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('test-results').style.display = 'none';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            hideLoading();
+        }
+        
+        function showApiResponse(data) {
+            const resultsDiv = document.getElementById('test-results');
+            const responseDiv = document.getElementById('api-response');
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+            resultsDiv.style.display = 'block';
+        }
+        
+        function renderPartners(partners) {
+            const grid = document.getElementById('partners-grid');
+            
+            if (!partners || partners.length === 0) {
+                grid.innerHTML = '<p>No delivery partners found. Create some using the admin API first.</p>';
+                return;
+            }
+            
+            grid.innerHTML = partners.map(partner => `
+                <div class="partner-card">
+                    ${partner.image ? `<img src="${partner.image}" alt="${partner.title}" onerror="this.style.display='none'">` : ''}
+                    <h3>
+                        ${partner.url_link ?
+                            `<a href="${partner.url_link}" target="_blank" rel="noopener noreferrer">${partner.title}</a>` :
+                            partner.title
+                        }
+                    </h3>
+                    <p>${partner.description || 'No description available'}</p>
+                    ${partner.url_link ? `<p><strong>Website:</strong> <a href="${partner.url_link}" target="_blank" rel="noopener noreferrer">${partner.url_link}</a></p>` : ''}
+                    <small>ID: ${partner.id} | Created: ${new Date(partner.created_at).toLocaleDateString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        async function loadDeliveryPartners() {
+            showLoading();
+            
+            try {
+                const response = await fetch(API_BASE);
+                const data = await response.json();
+                
+                showApiResponse(data);
+                hideLoading();
+                
+                if (data.success) {
+                    renderPartners(data.data);
+                } else {
+                    showError('API returned error: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+        
+        async function testSinglePartner() {
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/1`);
+                const data = await response.json();
+                
+                showApiResponse(data);
+                hideLoading();
+                
+                if (data.success) {
+                    renderPartners([data.data]);
+                } else {
+                    showError('API returned error: ' + (data.message || 'Partner not found'));
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('partners-grid').innerHTML = '';
+            document.getElementById('test-results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            hideLoading();
+        }
+        
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDeliveryPartners();
+        });
+    </script>
+</body>
+</html>
