@@ -30,7 +30,48 @@ Route::get('/login', function () {
     return response()->json(['message' => 'Unauthorized.'], 401);
 })->name('login');
 
-// Protected routes with Sanctum
+// Public routes for frontend website (no authentication required)
+Route::prefix('public')->group(function () {
+    // Public Products - for frontend display
+    Route::prefix('products')->group(function () {
+        Route::get('/', [ProductController::class, 'index']); // List products with filters
+        Route::get('/brands', [ProductController::class, 'getBrands']); // Get all brands
+        Route::get('/categories', [ProductController::class, 'getCategories']); // Get all categories
+        Route::get('/on-sale', [ProductController::class, 'getOnSaleProducts']); // Get sale products
+        Route::get('/{product}', [ProductController::class, 'show'])->missing(function (Request $request) {
+            return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+        }); // Single product details
+    });
+
+    // Public Sliders - for homepage carousel
+    Route::get('/sliders', [SliderController::class, 'index']);
+
+    // Public Settings - for site configuration, contact info, etc.
+    Route::get('/settings', [SettingController::class, 'index']);
+
+    // Public Policies - for privacy policy, terms, etc.
+    Route::prefix('policies')->group(function () {
+        Route::get('/', [PolicyController::class, 'index']); // All policies
+        Route::get('/{id}', [PolicyController::class, 'show']); // Single policy
+    });
+
+    // Public FAQs - for help section
+    Route::prefix('faqs')->group(function () {
+        Route::get('/', [FaqController::class, 'index']); // All FAQs
+        Route::get('/{id}', [FaqController::class, 'show']); // Single FAQ
+    });
+
+    // Public Contact Info - for contact page
+    Route::prefix('contact')->group(function () {
+        Route::get('/', [ContactController::class, 'index']); // Contact information
+        Route::post('/', [ContactController::class, 'store']); // Submit contact form (public)
+    });
+
+    // Public Shipping Info - for shipping rates/info
+    Route::get('/shipping', [\App\Http\Controllers\Api\ShippingController::class, 'index']);
+});
+
+// Protected routes with Sanctum (Admin/Management only)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -38,8 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json($request->user());
     });
 
-    // Home Settings API routes (CRUD)
-    Route::prefix('home-settings')->group(function () {
+    // Admin: Home Settings Management (CRUD)
+    Route::prefix('admin/settings')->group(function () {
         Route::get('/', [SettingController::class, 'index']);
         Route::post('/', [SettingController::class, 'store']);
         Route::get('/{id}', [SettingController::class, 'show']);
@@ -47,8 +88,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{id}', [SettingController::class, 'update']);
     });
 
-    // Slider API routes (CRUD, file upload)
-    Route::prefix('sliders')->group(function () {
+    // Admin: Slider Management (CRUD, file upload)
+    Route::prefix('admin/sliders')->group(function () {
         Route::get('/', [SliderController::class, 'index']);
         // multipart upload (field: image)
         Route::post('/', [SliderController::class, 'store']);
@@ -63,8 +104,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [SliderController::class, 'destroy']);
     });
 
-    // Shipping API routes (no delete per request)
-    Route::prefix('shippings')->group(function () {
+    // Admin: Shipping Management (no delete per request)
+    Route::prefix('admin/shipping')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\ShippingController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\Api\ShippingController::class, 'store']);
         Route::get('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'show']);
@@ -72,8 +113,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{id}', [\App\Http\Controllers\Api\ShippingController::class, 'update']);
     });
 
-    // Policy API routes
-    Route::prefix('policies')->group(function () {
+    // Admin: Policy Management
+    Route::prefix('admin/policies')->group(function () {
         Route::get('/', [PolicyController::class, 'index']);
         Route::post('/', [PolicyController::class, 'store']);
         Route::get('/{id}', [PolicyController::class, 'show']);
@@ -81,8 +122,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{id}', [PolicyController::class, 'update']);
     });
 
-    // FAQ API routes
-    Route::prefix('faqs')->group(function () {
+    // Admin: FAQ Management
+    Route::prefix('admin/faqs')->group(function () {
         Route::get('/', [FaqController::class, 'index']);
         Route::post('/', [FaqController::class, 'store']);
         Route::get('/{id}', [FaqController::class, 'show']);
@@ -91,8 +132,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [FaqController::class, 'destroy']);
     });
 
-    // Contact API routes
-    Route::prefix('contacts')->group(function () {
+    // Admin: Contact Management
+    Route::prefix('admin/contacts')->group(function () {
         Route::get('/', [ContactController::class, 'index']);
         Route::post('/', [ContactController::class, 'store']);
         Route::get('/{id}', [ContactController::class, 'show']);
@@ -101,12 +142,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [ContactController::class, 'destroy']);
     });
 
-    // Product API routes
-    Route::prefix('products')->group(function () {
+    // Admin: Product Management
+    Route::prefix('admin/products')->group(function () {
         Route::get('/stats', [ProductController::class, 'getStats']);
-        Route::get('/brands', [ProductController::class, 'getBrands']);
-        Route::get('/categories', [ProductController::class, 'getCategories']);
-        Route::get('/on-sale', [ProductController::class, 'getOnSaleProducts']);
         Route::post('/bulk', [ProductController::class, 'bulkOperation']);
         Route::get('/', [ProductController::class, 'index']);
         Route::post('/', [ProductController::class, 'store']);
