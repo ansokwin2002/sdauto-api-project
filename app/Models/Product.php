@@ -13,6 +13,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'brand',
+        'brand_id',
         'category',
         'part_number',
         'condition',
@@ -152,5 +153,15 @@ class Product extends Model
     public function isOnSale()
     {
         return $this->hasDiscount();
+    }
+
+    // ==================== RELATIONSHIPS ====================
+
+    /**
+     * Get the brand that owns the product.
+     */
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DeliveryPartnerController;
+use App\Http\Controllers\Api\BrandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,12 @@ Route::prefix('public')->group(function () {
     Route::prefix('delivery-partners')->group(function () {
         Route::get('/', [DeliveryPartnerController::class, 'publicIndex']); // All delivery partners
         Route::get('/{id}', [DeliveryPartnerController::class, 'publicShow']); // Single delivery partner
+    });
+
+    // Public Brands - for frontend display
+    Route::prefix('brands')->group(function () {
+        Route::get('/', [BrandController::class, 'publicIndex']); // All brands
+        Route::get('/{id}', [BrandController::class, 'publicShow']); // Single brand
     });
 });
 
@@ -188,5 +195,17 @@ Route::middleware('auth:sanctum')->group(function () {
         // update from remote image URL
         Route::patch('/{id}/url', [DeliveryPartnerController::class, 'updateFromUrl']);
         Route::delete('/{id}', [DeliveryPartnerController::class, 'destroy']);
+    });
+
+    // Admin: Brand Management (CRUD)
+    Route::prefix('admin/brands')->group(function () {
+        Route::get('/', [BrandController::class, 'index']);
+        Route::post('/', [BrandController::class, 'store']);
+        Route::get('/{id}', [BrandController::class, 'show']);
+        Route::put('/{id}', [BrandController::class, 'update']);
+        Route::patch('/{id}', [BrandController::class, 'update']);
+        Route::delete('/{id}', [BrandController::class, 'destroy']);
+        // Get brand with its products
+        Route::get('/{id}/products', [BrandController::class, 'getBrandProducts']);
     });
 });

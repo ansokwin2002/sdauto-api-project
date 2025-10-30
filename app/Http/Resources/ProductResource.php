@@ -11,7 +11,9 @@ class ProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'brand' => $this->brand,
+            'brand' => $this->getBrandName(), // Keep for backward compatibility
+            'brand_id' => $this->brand_id,
+            'brand_info' => $this->getBrandInfo(),
             'category' => $this->category,
             'part_number' => $this->part_number,
             'condition' => $this->condition,
@@ -39,5 +41,54 @@ class ProductResource extends JsonResource
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
+    }
+
+    /**
+     * Get brand information safely
+     */
+    private function getBrandInfo()
+    {
+        // If brand relationship is loaded and is an object
+        if ($this->relationLoaded('brand') && $this->brand && is_object($this->brand)) {
+            return [
+                'id' => $this->brand->id,
+                'brand_name' => $this->brand->brand_name,
+            ];
+        }
+
+        // If brand_id exists but relationship not loaded, fetch it
+        if ($this->brand_id) {
+            $brand = \App\Models\Brand::find($this->brand_id);
+            return $brand ? [
+                'id' => $brand->id,
+                'brand_name' => $brand->brand_name,
+            ] : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get brand name safely for backward compatibility
+     */
+    private function getBrandName()
+    {
+        // If brand relationship is loaded and is an object
+        if ($this->relationLoaded('brand') && $this->brand && is_object($this->brand)) {
+            return $this->brand->brand_name;
+        }
+
+        // If brand_id exists but relationship not loaded, fetch it
+        if ($this->brand_id) {
+            $brand = \App\Models\Brand::find($this->brand_id);
+            return $brand ? $brand->brand_name : null;
+        }
+
+        // Fallback to the old string brand field if it exists
+        if (isset($this->attributes['brand']) && is_string($this->attributes['brand'])) {
+            return $this->attributes['brand'];
+        }
+
+        return null;
     }
 }

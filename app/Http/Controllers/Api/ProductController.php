@@ -23,7 +23,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Product::query();
+            $query = Product::with('brand');
 
             // Search functionality
             /*
@@ -141,6 +141,13 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+
+            // Handle brand logic - if brand string is provided, find or create brand
+            if ($request->filled('brand') && !$request->filled('brand_id')) {
+                $brand = \App\Models\Brand::firstOrCreate(['brand_name' => $request->input('brand')]);
+                $data['brand_id'] = $brand->id;
+            }
+
             $imagePaths = [];
 
             if ($request->has('image_urls')) {
@@ -197,6 +204,7 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         try {
+            $product->load('brand');
             return response()->json([
                 'success' => true,
                 'data' => new ProductResource($product)
@@ -226,6 +234,12 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+
+            // Handle brand logic - if brand string is provided, find or create brand
+            if ($request->filled('brand') && !$request->filled('brand_id')) {
+                $brand = \App\Models\Brand::firstOrCreate(['brand_name' => $request->input('brand')]);
+                $data['brand_id'] = $brand->id;
+            }
 
             // Handle image updates
             if ($request->has('deleted_images') || $request->hasFile('images') || $request->has('image_urls')) {
@@ -510,14 +524,11 @@ class ProductController extends Controller
     public function getBrands()
     {
         try {
-            $brands = Product::select('brand')
-                ->distinct()
-                ->where('is_active', true)
-                ->whereNotNull('brand')
-                ->orderBy('brand')
-                ->pluck('brand')
-                ->filter()
-                ->values();
+            $brands = \App\Models\Brand::withCount(['products' => function($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('brand_name')
+            ->get();
 
             return response()->json([
                 'success' => true,

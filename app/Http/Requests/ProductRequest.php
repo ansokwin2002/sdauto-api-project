@@ -22,7 +22,25 @@ class ProductRequest extends FormRequest
 
         return [
             'name' => 'required|string|max:255',
-            'brand' => 'required|string|max:100',
+            'brand' => [
+                'sometimes',
+                'string',
+                'max:100',
+                function ($attribute, $value, $fail) {
+                    if (!$this->filled('brand_id') && !$this->filled('brand')) {
+                        $fail('Either brand or brand_id is required.');
+                    }
+                }
+            ],
+            'brand_id' => [
+                'nullable',
+                'exists:brands,id',
+                function ($attribute, $value, $fail) {
+                    if (!$this->filled('brand_id') && !$this->filled('brand')) {
+                        $fail('Either brand or brand_id is required.');
+                    }
+                }
+            ],
             'category' => 'nullable|string|max:100',
             'part_number' => [
                 'required',

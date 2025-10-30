@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand & Product API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .brand-list, .product-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .brand-item, .product-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .brand-item:hover, .product-item:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏷️ Brand & Product API Test</h1>
+
+    <div class="test-section">
+        <h2>📋 Brand Management</h2>
+        <div class="grid">
+            <div>
+                <h3>Create Brand</h3>
+                <div class="form-group">
+                    <label>Brand Name:</label>
+                    <input type="text" id="brandName" placeholder="Enter brand name" />
+                </div>
+                <button onclick="createBrand()">Create Brand</button>
+                <div id="createBrandResult" class="result" style="display: none;"></div>
+            </div>
+            <div>
+                <h3>All Brands</h3>
+                <button onclick="loadBrands()">Load Brands</button>
+                <div id="brandsList" class="brand-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📦 Product Management</h2>
+        <div class="grid">
+            <div>
+                <h3>Create Product</h3>
+                <div class="form-group">
+                    <label>Product Name:</label>
+                    <input type="text" id="productName" placeholder="Enter product name" />
+                </div>
+                <div class="form-group">
+                    <label>Brand (select or type):</label>
+                    <select id="productBrandId">
+                        <option value="">Select existing brand</option>
+                    </select>
+                    <input type="text" id="productBrandString" placeholder="Or type new brand name" />
+                </div>
+                <div class="form-group">
+                    <label>Part Number:</label>
+                    <input type="text" id="productPartNumber" placeholder="Enter part number" />
+                </div>
+                <div class="form-group">
+                    <label>Price:</label>
+                    <input type="number" id="productPrice" placeholder="Enter price" step="0.01" />
+                </div>
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" id="productQuantity" placeholder="Enter quantity" />
+                </div>
+                <button onclick="createProduct()">Create Product</button>
+                <div id="createProductResult" class="result" style="display: none;"></div>
+            </div>
+            <div>
+                <h3>All Products</h3>
+                <button onclick="loadProducts()">Load Products</button>
+                <div id="productsList" class="product-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔗 Relationship Tests</h2>
+        <button onclick="testBrandProducts()">Test Brand-Product Relationships</button>
+        <button onclick="testProductBrands()">Test Product Brand Info</button>
+        <div id="relationshipResult" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        let brands = [];
+        let products = [];
+
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${success ? 'success' : 'error'}`;
+            
+            let html = `<strong>${success ? '✅ Success' : '❌ Error'}:</strong> ${message}`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            element.innerHTML = html;
+        }
+
+        async function createBrand() {
+            const brandName = document.getElementById('brandName').value;
+            if (!brandName) {
+                showResult('createBrandResult', false, 'Please enter a brand name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/brands', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand_name: brandName })
+                });
+                
+                const data = await response.json();
+                showResult('createBrandResult', data.success, data.message || 'Brand created', data);
+                
+                if (data.success) {
+                    document.getElementById('brandName').value = '';
+                    loadBrands();
+                }
+            } catch (error) {
+                showResult('createBrandResult', false, 'Network error: ' + error.message);
+            }
+        }
+
+        async function loadBrands() {
+            try {
+                const response = await fetch('/api/public/brands');
+                const data = await response.json();
+                
+                if (data.success) {
+                    brands = data.data;
+                    displayBrands();
+                    updateBrandSelector();
+                }
+            } catch (error) {
+                console.error('Error loading brands:', error);
+            }
+        }
+
+        function displayBrands() {
+            const container = document.getElementById('brandsList');
+            container.innerHTML = brands.map(brand => `
+                <div class="brand-item">
+                    <strong>${brand.brand_name}</strong> (ID: ${brand.id})
+                    <br><small>${brand.products_count || 0} products</small>
+                </div>
+            `).join('');
+        }
+
+        function updateBrandSelector() {
+            const selector = document.getElementById('productBrandId');
+            selector.innerHTML = '<option value="">Select existing brand</option>' +
+                brands.map(brand => `<option value="${brand.id}">${brand.brand_name}</option>`).join('');
+        }
+
+        async function createProduct() {
+            const name = document.getElementById('productName').value;
+            const brandId = document.getElementById('productBrandId').value;
+            const brandString = document.getElementById('productBrandString').value;
+            const partNumber = document.getElementById('productPartNumber').value;
+            const price = document.getElementById('productPrice').value;
+            const quantity = document.getElementById('productQuantity').value;
+
+            if (!name || !partNumber || !price || !quantity) {
+                showResult('createProductResult', false, 'Please fill in all required fields');
+                return;
+            }
+
+            if (!brandId && !brandString) {
+                showResult('createProductResult', false, 'Please select a brand or enter a new brand name');
+                return;
+            }
+
+            const payload = {
+                name,
+                part_number: partNumber,
+                price: parseFloat(price),
+                quantity: parseInt(quantity),
+                condition: 'New'
+            };
+
+            if (brandId) {
+                payload.brand_id = parseInt(brandId);
+            } else {
+                payload.brand = brandString;
+            }
+
+            try {
+                const response = await fetch('/api/admin/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                showResult('createProductResult', data.success, data.message || 'Product created', data);
+                
+                if (data.success) {
+                    // Clear form
+                    document.getElementById('productName').value = '';
+                    document.getElementById('productBrandId').value = '';
+                    document.getElementById('productBrandString').value = '';
+                    document.getElementById('productPartNumber').value = '';
+                    document.getElementById('productPrice').value = '';
+                    document.getElementById('productQuantity').value = '';
+                    
+                    loadProducts();
+                    loadBrands(); // Refresh brands in case new one was created
+                }
+            } catch (error) {
+                showResult('createProductResult', false, 'Network error: ' + error.message);
+            }
+        }
+
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/public/products');
+                const data = await response.json();
+                
+                if (data.success) {
+                    products = data.data;
+                    displayProducts();
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+
+        function displayProducts() {
+            const container = document.getElementById('productsList');
+            container.innerHTML = products.map(product => `
+                <div class="product-item">
+                    <strong>${product.name}</strong>
+                    <br>Brand: ${product.brand_info?.brand_name || product.brand || 'N/A'}
+                    <br>Price: ${product.formatted_price || '$' + product.price}
+                    <br><small>ID: ${product.id} | Brand ID: ${product.brand_id || 'N/A'}</small>
+                </div>
+            `).join('');
+        }
+
+        async function testBrandProducts() {
+            if (brands.length === 0) {
+                showResult('relationshipResult', false, 'Load brands first');
+                return;
+            }
+
+            const brandId = brands[0].id;
+            try {
+                const response = await fetch(`/api/admin/brands/${brandId}/products`);
+                const data = await response.json();
+                showResult('relationshipResult', data.success, 'Brand-Products relationship test', data);
+            } catch (error) {
+                showResult('relationshipResult', false, 'Network error: ' + error.message);
+            }
+        }
+
+        async function testProductBrands() {
+            try {
+                const response = await fetch('/api/public/products/brands');
+                const data = await response.json();
+                showResult('relationshipResult', data.success, 'Product brands test', data);
+            } catch (error) {
+                showResult('relationshipResult', false, 'Network error: ' + error.message);
+            }
+        }
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBrands();
+            loadProducts();
+        });
+    </script>
+</body>
+</html>
