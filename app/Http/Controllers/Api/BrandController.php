@@ -6,9 +6,44 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class BrandController extends Controller
 {
+    // ==================== PUBLIC ENDPOINTS ====================
+
+    /**
+     * Display a listing of brands for public use.
+     * GET /api/public/brands
+     */
+    public function publicIndex()
+    {
+        $brands = Brand::orderBy('brand_name')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $brands,
+        ]);
+    }
+
+    /**
+     * Display the specified brand by slug for public use.
+     * GET /api/public/brands/{slug}
+     */
+    public function publicShow($slug)
+    {
+        $brand = Brand::bySlug($slug)->with(['products' => function($query) {
+            $query->where('is_active', true)->orderBy('name');
+        }])->first();
+
+        if (!$brand) {
+            return response()->json(['success' => false, 'message' => 'Brand not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'data' => $brand]);
+    }
+
+    // ==================== ADMIN ENDPOINTS ====================
+
     /**
      * Display a listing of brands.
      * GET /api/admin/brands
@@ -28,19 +63,12 @@ class BrandController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'brand_name' => ['required', 'string', 'max:255', 'unique:brands,brand_name'],
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
+        $data = $this->validateData($request);
+        $brand = Brand::create($data);
 
-        $brand = Brand::create($request->only(['brand_name']));
-        
         return response()->json([
-            'success' => true, 
-            'message' => 'Brand created successfully', 
+            'success' => true,
+            'message' => 'Brand created successfully',
             'data' => $brand
         ], 201);
     }
@@ -69,19 +97,12 @@ class BrandController extends Controller
             return response()->json(['success' => false, 'message' => 'Brand not found'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'brand_name' => ['required', 'string', 'max:255', 'unique:brands,brand_name,' . $id],
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
+        $data = $this->validateData($request, $id);
+        $brand->update($data);
 
-        $brand->update($request->only(['brand_name']));
-        
         return response()->json([
-            'success' => true, 
-            'message' => 'Brand updated successfully', 
+            'success' => true,
+            'message' => 'Brand updated successfully',
             'data' => $brand
         ]);
     }
@@ -160,5 +181,42 @@ class BrandController extends Controller
                 'products' => $brand->products
             ]
         ]);
+    }
+
+    // ==================== PRIVATE METHODS ====================
+
+    private function validateData(Request $request, $id = null): array
+    {
+        $rules = [
+            'brand_name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+        ];
+
+        // Add unique validation
+        if ($id) {
+            $rules['brand_name'][] = 'unique:brands,brand_name,' . $id;
+            $rules['slug'][] = 'unique:brands,slug,' . $id;
+        } else {
+            $rules['brand_name'][] = 'unique:brands,brand_name';
+            $rules['slug'][] = 'unique:brands,slug';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            abort(response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422));
+        }
+
+        $data = $validator->validated();
+
+        // Auto-generate slug if not provided
+        if (empty($data['slug']) && !empty($data['brand_name'])) {
+            $data['slug'] = Str::slug($data['brand_name']);
+        }
+
+        return $data;
     }
 }

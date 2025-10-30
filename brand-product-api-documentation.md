@@ -3,9 +3,11 @@
 ## 🆕 **What's New**
 
 ### **Brand API**
-- **New Table**: `brands` with `id` and `brand_name`
+- **New Table**: `brands` with `id`, `brand_name`, and `slug`
 - **Full CRUD**: Create, Read, Update, Delete brands
+- **Auto-slug generation**: Slugs automatically created from brand names
 - **Public & Admin APIs**: Both authenticated and public endpoints
+- **Slug-based public access**: SEO-friendly URLs for public endpoints
 - **Product Relationships**: Brands linked to products via `brand_id`
 
 ### **Updated Product API**
@@ -21,7 +23,7 @@
 ### **🔓 Public Endpoints**
 ```
 GET /api/public/brands           # Get all brands
-GET /api/public/brands/{id}      # Get single brand
+GET /api/public/brands/{slug}    # Get single brand by slug
 ```
 
 ### **🔐 Admin Endpoints**
@@ -42,9 +44,12 @@ GET    /api/admin/brands/{id}/products  # Get brand with products
 curl -X POST http://your-domain/api/admin/brands \
   -H "Content-Type: application/json" \
   -d '{
-    "brand_name": "Apple"
+    "brand_name": "Apple",
+    "slug": "apple"
   }'
 ```
+
+**Note**: If `slug` is not provided, it will be auto-generated from `brand_name`.
 
 #### **Get All Brands**
 ```bash
@@ -59,6 +64,7 @@ curl -X GET http://your-domain/api/public/brands
     {
       "id": 1,
       "brand_name": "Apple",
+      "slug": "apple",
       "products_count": 15,
       "created_at": "2025-10-29T14:30:22.000000Z",
       "updated_at": "2025-10-29T14:30:22.000000Z"
@@ -230,8 +236,14 @@ function ProductCard({ product }) {
 
 ### **Brand Validation**
 ```php
-'brand_name' => 'required|string|max:255|unique:brands,brand_name'
+'brand_name' => 'required|string|max:255|unique:brands,brand_name',
+'slug' => 'nullable|string|max:255|regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/|unique:brands,slug'
 ```
+
+### **Auto-Slug Generation**
+- If no slug is provided, it's automatically generated from the brand name
+- Slugs are converted to lowercase and spaces/special characters become hyphens
+- Duplicate slugs get a numeric suffix (e.g., "apple-2")
 
 ### **Product Validation**
 ```php
@@ -242,11 +254,70 @@ function ProductCard({ product }) {
 
 ---
 
+## 🔗 **Slug Usage Examples**
+
+### **Frontend Integration**
+```javascript
+// Get all brands
+fetch('/api/public/brands')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            data.data.forEach(brand => {
+                console.log(`${brand.brand_name} - ${brand.slug}`);
+            });
+        }
+    });
+
+// Get specific brand by slug
+fetch('/api/public/brands/apple')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Brand:', data.data.brand_name);
+            console.log('Products:', data.data.products);
+        }
+    });
+```
+
+### **Admin Panel Integration**
+```javascript
+// Create brand with custom slug
+fetch('/api/admin/brands', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({
+        brand_name: 'Mercedes-Benz',
+        slug: 'mercedes-benz'
+    })
+});
+
+// Create brand with auto-generated slug
+fetch('/api/admin/brands', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({
+        brand_name: 'BMW Parts'
+        // slug will be auto-generated as 'bmw-parts'
+    })
+});
+```
+
+---
+
 ## 🎉 **Ready to Use!**
 
 Your Brand and Product APIs are now fully integrated with:
 - ✅ Complete brand management
-- ✅ Product-brand relationships  
+- ✅ Auto-slug generation for SEO-friendly URLs
+- ✅ Slug-based public access
+- ✅ Product-brand relationships
 - ✅ Backward compatibility
 - ✅ Public & admin endpoints
 - ✅ Auto brand creation

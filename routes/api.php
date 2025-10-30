@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DeliveryPartnerController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\FooterController;
+use App\Http\Controllers\Api\CategoryBrandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -81,7 +83,16 @@ Route::prefix('public')->group(function () {
     // Public Brands - for frontend display
     Route::prefix('brands')->group(function () {
         Route::get('/', [BrandController::class, 'publicIndex']); // All brands
-        Route::get('/{id}', [BrandController::class, 'publicShow']); // Single brand
+        Route::get('/{slug}', [BrandController::class, 'publicShow']); // Single brand by slug
+    });
+
+    // Public Footer - for website footer
+    Route::get('/footer', [FooterController::class, 'index']);
+
+    // Public Category Brands - for frontend display
+    Route::prefix('category-brands')->group(function () {
+        Route::get('/', [CategoryBrandController::class, 'publicIndex']); // All category brands
+        Route::get('/{slug}', [CategoryBrandController::class, 'publicShow']); // Single category brand by slug
     });
 });
 
@@ -207,5 +218,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [BrandController::class, 'destroy']);
         // Get brand with its products
         Route::get('/{id}/products', [BrandController::class, 'getBrandProducts']);
+    });
+
+    // Admin: Footer Management (CRUD)
+    Route::prefix('admin/footer')->group(function () {
+        Route::get('/', [FooterController::class, 'index']);
+        Route::post('/', [FooterController::class, 'store']);
+        Route::get('/{id}', [FooterController::class, 'show']);
+        Route::put('/{id}', [FooterController::class, 'update']);
+        Route::patch('/{id}', [FooterController::class, 'update']);
+        Route::delete('/{id}', [FooterController::class, 'destroy']);
+    });
+
+    // Admin: Category Brand Management (CRUD)
+    Route::prefix('admin/category-brands')->group(function () {
+        Route::get('/', [CategoryBrandController::class, 'index']);
+        // multipart upload (field: logo)
+        Route::post('/', [CategoryBrandController::class, 'store']);
+        Route::post('/upload', [CategoryBrandController::class, 'store']);
+        // create from remote logo URL
+        Route::post('/url', [CategoryBrandController::class, 'fromUrl']);
+
+        Route::get('/{id}', [CategoryBrandController::class, 'show']);
+        Route::put('/{id}', [CategoryBrandController::class, 'update']);
+        Route::patch('/{id}', [CategoryBrandController::class, 'update']);
+        Route::patch('/{id}/ordering', [CategoryBrandController::class, 'updateOrdering']);
+        // update logo from remote URL
+        Route::patch('/{id}/url', [CategoryBrandController::class, 'updateFromUrl']);
+        Route::delete('/{id}', [CategoryBrandController::class, 'destroy']);
     });
 });
