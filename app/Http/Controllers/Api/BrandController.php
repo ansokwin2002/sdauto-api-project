@@ -135,32 +135,6 @@ class BrandController extends Controller
     }
 
     /**
-     * Public API: Display a listing of brands for frontend.
-     * GET /api/public/brands
-     */
-    public function publicIndex()
-    {
-        $brands = Brand::withCount('products')->orderBy('brand_name')->get();
-        return response()->json([
-            'success' => true,
-            'data' => $brands,
-        ]);
-    }
-
-    /**
-     * Public API: Display the specified brand for frontend.
-     * GET /api/public/brands/{id}
-     */
-    public function publicShow($id)
-    {
-        $brand = Brand::withCount('products')->find($id);
-        if (!$brand) {
-            return response()->json(['success' => false, 'message' => 'Brand not found'], 404);
-        }
-        return response()->json(['success' => true, 'data' => $brand]);
-    }
-
-    /**
      * Get brands with their products.
      * GET /api/admin/brands/{id}/products
      */
