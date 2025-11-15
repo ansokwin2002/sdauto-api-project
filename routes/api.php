@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\DeliveryPartnerController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\FooterController;
 use App\Http\Controllers\Api\CategoryBrandController;
+use App\Http\Controllers\Api\CategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +94,12 @@ Route::prefix('public')->group(function () {
     Route::prefix('category-brands')->group(function () {
         Route::get('/', [CategoryBrandController::class, 'publicIndex']); // All category brands
         Route::get('/{slug}', [CategoryBrandController::class, 'publicShow']); // Single category brand by slug
+    });
+
+    // Public Categories - for frontend display
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [CategoryController::class, 'publicIndex']); // All categories
+        Route::get('/{slug}', [CategoryController::class, 'publicShow']); // Single category by slug
     });
 });
 
@@ -218,6 +225,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [BrandController::class, 'destroy']);
         // Get brand with its products
         Route::get('/{id}/products', [BrandController::class, 'getBrandProducts']);
+    });
+
+    // Admin: Category Management (CRUD)
+    Route::prefix('admin/categories')->group(function () {
+        Route::get('/', [CategoryController::class, 'index']);
+        Route::post('/', [CategoryController::class, 'store']);
+        Route::get('/{id}', [CategoryController::class, 'show']);
+        Route::put('/{id}', [CategoryController::class, 'update']);
+        Route::patch('/{id}', [CategoryController::class, 'update']);
+        Route::delete('/{id}', [CategoryController::class, 'destroy']);
     });
 
     // Admin: Footer Management (CRUD)

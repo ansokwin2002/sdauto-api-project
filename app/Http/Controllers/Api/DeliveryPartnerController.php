@@ -86,7 +86,7 @@ class DeliveryPartnerController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif,svg', 'max:5120'],
             'url_link' => ['nullable', 'url', 'max:500'],
         ]);
         
@@ -94,7 +94,16 @@ class DeliveryPartnerController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $item->fill($request->only(['title', 'description', 'url_link']));
+        // Update only fields that are present in the request to avoid unintended overwrites
+        if ($request->has('title')) {
+            $item->title = $request->input('title');
+        }
+        if ($request->has('description')) {
+            $item->description = $request->input('description');
+        }
+        if ($request->has('url_link')) {
+            $item->url_link = $request->input('url_link');
+        }
 
         if ($request->hasFile('image')) {
             // Delete old file if exists
