@@ -31,5 +31,6 @@ class Setting extends Model
         'why_choose_description3',
         'why_choose_title4',
         'why_choose_description4',
+        'footer_home',
     ];
 }

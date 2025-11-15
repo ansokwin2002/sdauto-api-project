@@ -79,6 +79,7 @@ class SettingController extends Controller
             'why_choose_description3' => ['nullable','string'],
             'why_choose_title4' => ['nullable','string','max:255'],
             'why_choose_description4' => ['nullable','string'],
+            'footer_home' => ['nullable','string','max:255'],
         ];
 
         $validator = Validator::make($request->all(), $rules);
