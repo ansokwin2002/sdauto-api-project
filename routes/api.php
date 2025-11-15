@@ -66,10 +66,11 @@ Route::prefix('public')->group(function () {
         Route::get('/{id}', [FaqController::class, 'show']); // Single FAQ
     });
 
-    // Public Contact Info - for contact page
-    Route::prefix('contact')->group(function () {
-        Route::get('/', [ContactController::class, 'index']); // Contact information
+    // Public Contacts - for contact page
+    Route::prefix('contacts')->group(function () {
+        Route::get('/', [ContactController::class, 'index']); // List contact info entries
         Route::post('/', [ContactController::class, 'store']); // Submit contact form (public)
+        Route::get('/{id}', [ContactController::class, 'show']); // View single contact entry
     });
 
     // Public Shipping Info - for shipping rates/info
