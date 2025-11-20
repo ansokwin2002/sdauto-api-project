@@ -20,8 +20,8 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-           'http://192.168.1.5:3000',       
-           'http://192.168.1.5:9003',      
+           'https://admin.sdauto.com.au',       
+           'https://sdauto.com.au',      
        ],
 
     'allowed_origins_patterns' => [],
