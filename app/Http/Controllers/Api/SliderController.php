@@ -19,9 +19,16 @@ class SliderController extends Controller
      */
     private function syncPublicStorage(): void
     {
-        // copyDirectory will create the target if necessary
-        File::copyDirectory(storage_path('app/public'), public_path('storage'));
+        $from = storage_path('app/public');
+        $to   = public_path('storage');
+
+        // Delete all existing files in public/storage so old files do not restore
+        File::cleanDirectory($to);
+
+        // Copy all files fresh
+        File::copyDirectory($from, $to);
     }
+
 
     // GET /api/sliders
     public function index()
