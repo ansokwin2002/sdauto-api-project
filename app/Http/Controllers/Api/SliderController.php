@@ -22,11 +22,21 @@ class SliderController extends Controller
         $from = storage_path('app/public');
         $to   = public_path('storage');
 
-        // Delete all existing files in public/storage so old files do not restore
-        File::cleanDirectory($to);
+        // Ensure the public/storage directory exists
+        if (!File::exists($to)) {
+            File::makeDirectory($to, 0755, true);
+        }
 
-        // Copy all files fresh
-        File::copyDirectory($from, $to);
+        // Ensure the sliders subdirectory exists in public/storage
+        $slidersDir = $to . '/sliders';
+        if (!File::exists($slidersDir)) {
+            File::makeDirectory($slidersDir, 0755, true);
+        }
+
+        // Copy all files from storage/app/public to public/storage
+        if (File::exists($from)) {
+            File::copyDirectory($from, $to);
+        }
     }
 
 
@@ -48,6 +58,12 @@ class SliderController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        // Ensure the sliders directory exists in storage/app/public
+        $slidersPath = storage_path('app/public/sliders');
+        if (!File::exists($slidersPath)) {
+            File::makeDirectory($slidersPath, 0755, true);
         }
 
         // store file into storage/app/public/sliders
@@ -99,6 +115,12 @@ class SliderController extends Controller
         if ($request->hasFile('image')) {
             // delete old file if exists
             $this->deleteFileIfExists($item->image);
+
+            // Ensure the sliders directory exists in storage/app/public
+            $slidersPath = storage_path('app/public/sliders');
+            if (!File::exists($slidersPath)) {
+                File::makeDirectory($slidersPath, 0755, true);
+            }
 
             $path = $request->file('image')->store('sliders', 'public');
             $item->image = '/storage/' . $path;
@@ -202,6 +224,12 @@ class SliderController extends Controller
                 if (strlen($body) > $maxBytes) {
                     return response()->json(['success' => false, 'message' => 'Image exceeds 5MB limit'], 422);
                 }
+            }
+
+            // Ensure the sliders directory exists in storage/app/public
+            $slidersPath = storage_path('app/public/sliders');
+            if (!File::exists($slidersPath)) {
+                File::makeDirectory($slidersPath, 0755, true);
             }
 
             // Generate unique filename and save into storage/app/public/sliders
