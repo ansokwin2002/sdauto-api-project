@@ -6,13 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Shipping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
 
 class ShippingController extends Controller
 {
+    /**
+     * Copy storage/app/public → public/storage (no symlink needed)
+     */
+    private function syncPublicStorage()
+    {
+        File::copyDirectory(
+            storage_path('app/public'),
+            public_path('storage')
+        );
+    }
+
     // GET /api/shippings
     public function index()
     {
@@ -20,7 +29,7 @@ class ShippingController extends Controller
         return response()->json(['success' => true, 'data' => $items]);
     }
 
-    // POST /api/shippings (multipart or JSON)
+    // POST /api/shippings
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -28,21 +37,25 @@ class ShippingController extends Controller
             'description' => ['nullable','string'],
             'label_partner' => ['nullable','string','max:255'],
             'text' => ['nullable','string'],
-            'map_image' => ['nullable','image','mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'map_image' => ['nullable','image','mimes:jpg,jpeg,png,webp,gif','max:5120'],
         ]);
+
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         $payload = $request->only(['title','description','label_partner','text']);
 
-        // Handle map image via upload
+        // Upload image (no symlink)
         if ($request->hasFile('map_image')) {
             $path = $request->file('map_image')->store('shippings', 'public');
             $payload['map_image'] = '/storage/' . $path;
+
+            $this->syncPublicStorage();
         }
 
         $item = Shipping::create($payload);
+
         return response()->json(['success' => true, 'message' => 'Shipping created', 'data' => $item], 201);
     }
 
@@ -50,23 +63,28 @@ class ShippingController extends Controller
     public function show($id)
     {
         $item = Shipping::find($id);
-        if (!$item) return response()->json(['success' => false, 'message' => 'Shipping not found'], 404);
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Shipping not found'], 404);
+        }
         return response()->json(['success' => true, 'data' => $item]);
     }
 
-    // PUT/PATCH /api/shippings/{id}
+    // PUT /api/shippings/{id}
     public function update(Request $request, $id)
     {
         $item = Shipping::find($id);
-        if (!$item) return response()->json(['success' => false, 'message' => 'Shipping not found'], 404);
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Shipping not found'], 404);
+        }
 
         $validator = Validator::make($request->all(), [
             'title' => ['sometimes','required','string','max:255'],
             'description' => ['nullable','string'],
             'label_partner' => ['nullable','string','max:255'],
             'text' => ['nullable','string'],
-            'map_image' => ['nullable','image','mimes:jpg,jpeg,png,webp,gif','max:5120']
+            'map_image' => ['nullable','image','mimes:jpg,jpeg,png,webp,gif','max:5120'],
         ]);
+
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
@@ -75,21 +93,35 @@ class ShippingController extends Controller
 
         if ($request->hasFile('map_image')) {
             $this->deleteFileIfExists($item->map_image);
+
             $path = $request->file('map_image')->store('shippings', 'public');
             $item->map_image = '/storage/' . $path;
+
+            $this->syncPublicStorage();
         }
 
         $item->save();
+
         return response()->json(['success' => true, 'message' => 'Shipping updated', 'data' => $item]);
     }
 
+    /**
+     * Delete physical file from /public/storage AND disk('public')
+     */
     private function deleteFileIfExists($publicPath)
     {
         if (!$publicPath) return;
-        $relative = ltrim($publicPath, '/');
-        if (str_starts_with($relative, 'storage/')) {
-            $diskPath = substr($relative, strlen('storage/'));
-            Storage::disk('public')->delete($diskPath);
+
+        // Example: /storage/shippings/img.jpg → shippings/img.jpg
+        $cleanPath = str_replace('/storage/', '', $publicPath);
+
+        if (Storage::disk('public')->exists($cleanPath)) {
+            Storage::disk('public')->delete($cleanPath);
+        }
+
+        $fullPublicPath = public_path('storage/' . $cleanPath);
+        if (file_exists($fullPublicPath)) {
+            unlink($fullPublicPath);
         }
     }
 }
