@@ -22,6 +22,7 @@ return [
     'allowed_origins' => [
            'https://admin.sdauto.com.au',       
            'https://sdauto.com.au',   
+           'https://www.sdauto.com.au',
            'http://192.168.1.6:3000'   
        ],
 
