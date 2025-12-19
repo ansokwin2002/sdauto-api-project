@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\FooterController;
 use App\Http\Controllers\Api\CategoryBrandController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ShippingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -74,8 +75,9 @@ Route::prefix('public')->group(function () {
     });
 
     // Public Shipping Info - for shipping rates/info
-    Route::get('/shipping', [\App\Http\Controllers\Api\ShippingController::class, 'index']);
+    Route::get('/shipping', [ShippingController::class, 'index']);
 
+    Route::get('/', [ContactController::class, 'index']);
     // Public Delivery Partners - for frontend display
     Route::prefix('delivery-partners')->group(function () {
         Route::get('/', [DeliveryPartnerController::class, 'publicIndex']); // All delivery partners
