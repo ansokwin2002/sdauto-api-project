@@ -65,7 +65,7 @@ class ProductRequest extends FormRequest
             ],
             'description' => 'nullable|string|max:2000',
             'images' => 'nullable|array|max:20',
-            'images.*' => ['bail', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'images.*' => ['bail', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'image_urls' => 'nullable|array|max:20',
             'image_urls.*' => 'string|url|max:500',
             'videos' => 'nullable|array|max:5',

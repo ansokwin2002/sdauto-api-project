@@ -151,13 +151,16 @@ class ProductController extends Controller
             $imagePaths = [];
 
             if ($request->has('image_urls')) {
-                $imagePaths = array_merge($imagePaths, $request->input('image_urls'));
+                $convertedImageUrls = array_map(function($url) {
+                    return $this->convertToRelativePath($url);
+                }, $request->input('image_urls'));
+                $imagePaths = array_merge($imagePaths, $convertedImageUrls);
             }
 
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $path = $image->store('products', 'public');
-                    $imagePaths[] = asset('storage/' . $path);
+                    $imagePaths[] = 'storage/' . $path;
                 }
             }
 
@@ -263,14 +266,17 @@ class ProductController extends Controller
                 $newImagePaths = [];
                 // Add new image URLs
                 if ($request->has('image_urls')) {
-                    $newImagePaths = array_merge($newImagePaths, $request->input('image_urls'));
+                    $convertedImageUrls = array_map(function($url) {
+                        return $this->convertToRelativePath($url);
+                    }, $request->input('image_urls'));
+                    $newImagePaths = array_merge($newImagePaths, $convertedImageUrls);
                 }
 
                 // Add newly uploaded images
                 if ($request->hasFile('images')) {
                     foreach ($request->file('images') as $image) {
                         $path = $image->store('products', 'public');
-                        $newImagePaths[] = asset('storage/' . $path);
+                        $newImagePaths[] = 'storage/' . $path;
                     }
                 }
                 
@@ -409,7 +415,8 @@ class ProductController extends Controller
             $images = $product->images;
 
             // Find the index of the image to delete
-            $imageIndex = array_search($imageUrl, $images);
+            $imageToDeleteRelativePath = $this->convertToRelativePath($imageUrl);
+            $imageIndex = array_search($imageToDeleteRelativePath, $images);
 
             if ($imageIndex === false) {
                 return response()->json([
@@ -419,7 +426,7 @@ class ProductController extends Controller
             }
 
             // Get the path of the image from the URL
-            $path = ltrim(parse_url($imageUrl, PHP_URL_PATH), '/storage/');
+            $path = $this->convertToRelativePath($imageUrl);
 
             // Delete the physical file
             if (Storage::disk('public')->exists($path)) {
@@ -515,6 +522,24 @@ class ProductController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
+    }
+
+    /**
+     * Converts a full URL to a relative storage path if applicable.
+     *
+     * @param string $url
+     * @return string
+     */
+    private function convertToRelativePath(string $url): string
+    {
+        // Check if the URL contains 'storage/' to determine if it's a full storage URL
+        if (strpos($url, '/storage/') !== false) {
+            // Parse the URL and get the path component
+            $path = parse_url($url, PHP_URL_PATH);
+            // Remove everything before 'storage/'
+            return ltrim(strstr($path, 'storage/'), '/');
+        }
+        return $url; // Return original if not a full storage URL
     }
 
     /**
