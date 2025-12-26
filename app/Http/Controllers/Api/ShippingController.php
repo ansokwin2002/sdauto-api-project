@@ -12,14 +12,20 @@ use Illuminate\Support\Facades\Validator;
 class ShippingController extends Controller
 {
     /**
-     * Copy storage/app/public → public/storage (no symlink needed)
+     * Copy storage/app/public/shippings -> public/storage/shippings
      */
     private function syncPublicStorage()
     {
-        File::copyDirectory(
-            storage_path('app/public'),
-            public_path('storage')
-        );
+        $from = storage_path('app/public/shippings');
+        $to   = public_path('storage/shippings');
+
+        if (!File::exists($to)) {
+            File::makeDirectory($to, 0755, true);
+        }
+
+        if (File::exists($from)) {
+            File::copyDirectory($from, $to);
+        }
     }
 
     // GET /api/shippings
@@ -48,6 +54,12 @@ class ShippingController extends Controller
 
         // Upload image (no symlink)
         if ($request->hasFile('map_image')) {
+            // Ensure the directory exists
+            $storagePath = storage_path('app/public/shippings');
+            if (!File::exists($storagePath)) {
+                File::makeDirectory($storagePath, 0755, true);
+            }
+
             $path = $request->file('map_image')->store('shippings', 'public');
             $payload['map_image'] = '/storage/' . $path;
 
@@ -93,6 +105,12 @@ class ShippingController extends Controller
 
         if ($request->hasFile('map_image')) {
             $this->deleteFileIfExists($item->map_image);
+            
+            // Ensure the directory exists
+            $storagePath = storage_path('app/public/shippings');
+            if (!File::exists($storagePath)) {
+                File::makeDirectory($storagePath, 0755, true);
+            }
 
             $path = $request->file('map_image')->store('shippings', 'public');
             $item->map_image = '/storage/' . $path;

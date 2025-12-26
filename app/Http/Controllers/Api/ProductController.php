@@ -22,21 +22,13 @@ class ProductController extends Controller
      */
     private function syncPublicStorage(): void
     {
-        $from = storage_path('app/public');
-        $to   = public_path('storage');
+        $from = storage_path('app/public/products');
+        $to   = public_path('storage/products');
 
-        // Ensure the public/storage directory exists
         if (!File::exists($to)) {
             File::makeDirectory($to, 0755, true);
         }
 
-        // Ensure the products subdirectory exists in public/storage
-        $productsDir = $to . '/products';
-        if (!File::exists($productsDir)) {
-            File::makeDirectory($productsDir, 0755, true);
-        }
-
-        // Copy all files from storage/app/public to public/storage
         if (File::exists($from)) {
             File::copyDirectory($from, $to);
         }
@@ -285,17 +277,21 @@ class ProductController extends Controller
 
                 // Remove deleted images
                 if ($request->has('deleted_images')) {
-                    $imagesToDelete = $request->input('deleted_images');
-                    foreach ($imagesToDelete as $imageUrl) {
-                        $path = ltrim(parse_url($imageUrl, PHP_URL_PATH), '/storage/');
-                        if (Storage::disk('public')->exists($path)) {
-                            Storage::disk('public')->delete($path);
-                        }
-                        // Remove from current images
-                        if (($key = array_search($imageUrl, $currentImages)) !== false) {
-                            unset($currentImages[$key]);
+                    $imagesToDelete = $request->input('deleted_images'); // Full URLs from client
+                    
+                    $survivingImages = [];
+                    foreach ($currentImages as $currentImage) {
+                        // asset() helper generates the full URL for a given path
+                        $fullUrlOfCurrentImage = asset($currentImage);
+                        if (in_array($fullUrlOfCurrentImage, $imagesToDelete)) {
+                            // This image should be deleted
+                            $this->deleteFileIfExists($currentImage);
+                        } else {
+                            // This image should be kept
+                            $survivingImages[] = $currentImage;
                         }
                     }
+                    $currentImages = $survivingImages;
                 }
 
                 $newImagePaths = [];
@@ -415,6 +411,13 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
+            // Before deleting the product, delete its images
+            if (!empty($product->images)) {
+                foreach ($product->images as $imagePath) {
+                    $this->deleteFileIfExists($imagePath);
+                }
+            }
+
             $product->delete();
 
             DB::commit();
@@ -469,14 +472,9 @@ class ProductController extends Controller
                 ], 404);
             }
 
-            // Get the path of the image from the URL
-            $path = $this->convertToRelativePath($imageUrl);
-
-            // Delete the physical file
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
-
+            // Delete the physical file from both locations
+            $this->deleteFileIfExists($imageToDeleteRelativePath);
+            
             // Remove the image from the array
             array_splice($images, $imageIndex, 1);
 
@@ -565,6 +563,30 @@ class ProductController extends Controller
                 'message' => 'Error deleting video',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
+        }
+    }
+
+    /**
+     * Deletes physical file from disk('public') AND public/storage path
+     */
+    private function deleteFileIfExists($relativePath): void
+    {
+        if (! $relativePath) {
+            return;
+        }
+
+        // $relativePath is like 'storage/products/xyz.jpg'
+        // convert to 'products/xyz.jpg' for Storage::disk('public')
+        $storagePath = str_replace('storage/', '', $relativePath);
+
+        if (Storage::disk('public')->exists($storagePath)) {
+            Storage::disk('public')->delete($storagePath);
+        }
+
+        // also delete from public/storage/products/xyz.jpg
+        $publicPath = public_path($relativePath);
+        if (file_exists($publicPath)) {
+            @unlink($publicPath);
         }
     }
 

@@ -10,9 +10,27 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\File;
 
 class DeliveryPartnerController extends Controller
 {
+    /**
+     * Copy storage/app/public/delivery-partners -> public/storage/delivery-partners
+     */
+    private function syncPublicStorage(): void
+    {
+        $from = storage_path('app/public/delivery-partners');
+        $to   = public_path('storage/delivery-partners');
+
+        if (!File::exists($to)) {
+            File::makeDirectory($to, 0755, true);
+        }
+
+        if (File::exists($from)) {
+            File::copyDirectory($from, $to);
+        }
+    }
+
     /**
      * Display a listing of delivery partners.
      * GET /api/delivery-partners
@@ -47,8 +65,17 @@ class DeliveryPartnerController extends Controller
 
         // Handle image via upload
         if ($request->hasFile('image')) {
+            // Ensure the directory exists
+            $storagePath = storage_path('app/public/delivery-partners');
+            if (!File::exists($storagePath)) {
+                File::makeDirectory($storagePath, 0755, true);
+            }
+
             $path = $request->file('image')->store('delivery-partners', 'public');
             $payload['image'] = '/storage/' . $path;
+
+            // Sync with public/storage
+            $this->syncPublicStorage();
         }
 
         $item = DeliveryPartner::create($payload);
@@ -108,8 +135,18 @@ class DeliveryPartnerController extends Controller
         if ($request->hasFile('image')) {
             // Delete old file if exists
             $this->deleteFileIfExists($item->image);
+
+            // Ensure the directory exists
+            $storagePath = storage_path('app/public/delivery-partners');
+            if (!File::exists($storagePath)) {
+                File::makeDirectory($storagePath, 0755, true);
+            }
+
             $path = $request->file('image')->store('delivery-partners', 'public');
             $item->image = '/storage/' . $path;
+
+            // Sync with public/storage
+            $this->syncPublicStorage();
         }
 
         $item->save();
@@ -190,9 +227,18 @@ class DeliveryPartnerController extends Controller
                 }
             }
 
+            // Ensure the directory exists
+            $storagePath = storage_path('app/public/delivery-partners');
+            if (!File::exists($storagePath)) {
+                File::makeDirectory($storagePath, 0755, true);
+            }
+
             // Generate unique filename
             $filename = 'delivery-partners/' . now()->format('Ymd_His') . '_' . Str::random(10) . '.' . $ext;
             Storage::disk('public')->put($filename, $body);
+
+            // Sync with public/storage
+            $this->syncPublicStorage();
 
             $payload = [
                 'title' => $request->input('title'),
@@ -277,9 +323,18 @@ class DeliveryPartnerController extends Controller
                 // Delete old file if exists
                 $this->deleteFileIfExists($item->image);
 
+                // Ensure the directory exists
+                $storagePath = storage_path('app/public/delivery-partners');
+                if (!File::exists($storagePath)) {
+                    File::makeDirectory($storagePath, 0755, true);
+                }
+
                 // Generate unique filename
                 $filename = 'delivery-partners/' . now()->format('Ymd_His') . '_' . Str::random(10) . '.' . $ext;
                 Storage::disk('public')->put($filename, $body);
+                
+                // Sync with public/storage
+                $this->syncPublicStorage();
 
                 $item->image = '/storage/' . $filename;
             } catch (\Throwable $e) {
@@ -327,12 +382,24 @@ class DeliveryPartnerController extends Controller
      */
     private function deleteFileIfExists($publicPath)
     {
-        if (!$publicPath) return;
-        // $publicPath example: /storage/delivery-partners/xyz.jpg -> convert to storage path
-        $relative = ltrim($publicPath, '/'); // storage/delivery-partners/xyz.jpg
-        if (str_starts_with($relative, 'storage/')) {
-            $diskPath = substr($relative, strlen('storage/'));
-            Storage::disk('public')->delete($diskPath);
+        if (! $publicPath) {
+            return;
+        }
+
+        // $publicPath is like '/storage/delivery-partners/xyz.jpg'
+        $relativePath = ltrim($publicPath, '/'); // 'storage/delivery-partners/xyz.jpg'
+        
+        // convert to 'delivery-partners/xyz.jpg' for Storage::disk('public')
+        $storagePath = str_replace('storage/', '', $relativePath);
+
+        if (Storage::disk('public')->exists($storagePath)) {
+            Storage::disk('public')->delete($storagePath);
+        }
+
+        // also delete from public/storage/delivery-partners/xyz.jpg
+        $publicCopiedPath = public_path($relativePath);
+        if (file_exists($publicCopiedPath)) {
+            @unlink($publicCopiedPath);
         }
     }
 }

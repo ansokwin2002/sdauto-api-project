@@ -19,21 +19,15 @@ class SliderController extends Controller
      */
     private function syncPublicStorage(): void
     {
-        $from = storage_path('app/public');
-        $to   = public_path('storage');
+        $from = storage_path('app/public/sliders');
+        $to   = public_path('storage/sliders');
 
-        // Ensure the public/storage directory exists
+        // Ensure the public/storage/sliders directory exists
         if (!File::exists($to)) {
             File::makeDirectory($to, 0755, true);
         }
 
-        // Ensure the sliders subdirectory exists in public/storage
-        $slidersDir = $to . '/sliders';
-        if (!File::exists($slidersDir)) {
-            File::makeDirectory($slidersDir, 0755, true);
-        }
-
-        // Copy all files from storage/app/public to public/storage
+        // Copy all files from storage/app/public/sliders to public/storage/sliders
         if (File::exists($from)) {
             File::copyDirectory($from, $to);
         }
