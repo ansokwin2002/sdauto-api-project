@@ -277,13 +277,14 @@ class ProductController extends Controller
 
                 // Remove deleted images
                 if ($request->has('deleted_images')) {
-                    $imagesToDelete = $request->input('deleted_images'); // Full URLs from client
-                    
+                    $urlsToDelete = $request->input('deleted_images');
+                    $relativePathsToDelete = array_map(function($url) {
+                        return $this->convertToRelativePath($url);
+                    }, $urlsToDelete);
+
                     $survivingImages = [];
                     foreach ($currentImages as $currentImage) {
-                        // asset() helper generates the full URL for a given path
-                        $fullUrlOfCurrentImage = asset($currentImage);
-                        if (in_array($fullUrlOfCurrentImage, $imagesToDelete)) {
+                        if (in_array($currentImage, $relativePathsToDelete)) {
                             // This image should be deleted
                             $this->deleteFileIfExists($currentImage);
                         } else {
