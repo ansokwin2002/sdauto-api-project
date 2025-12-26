@@ -12,7 +12,7 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'brand' => $this->getBrandName(), // Keep for backward compatibility
-            'brand_id' => $this->brand_id,
+            'brand_id' => $this->when(isset($this->brand_id), $this->brand_id), // Debugging check
             'brand_info' => $this->getBrandInfo(),
             'category' => $this->category,
             'part_number' => $this->part_number,
@@ -27,8 +27,11 @@ class ProductResource extends JsonResource
             'has_discount' => $this->hasDiscount(),
             'is_on_sale' => $this->isOnSale(),
             'description' => $this->description,
-            'images' => is_array($this->images) ? array_map(function($image) { return asset($image);
-            }, $this->images) : [],
+            'images' => is_array($this->images)
+                ? array_map(function ($image) {
+                    return asset($image);
+                }, $this->images)
+                : [],
             'videos' => $this->videos ?? [],
             'primary_image' => $this->primary_image,
             'is_active' => $this->is_active,
@@ -47,7 +50,7 @@ class ProductResource extends JsonResource
      */
     private function getBrandInfo()
     {
-        // If brand relationship is loaded and is an object
+        // If brand relationship is loaded and is an object, use it (most efficient)
         if ($this->relationLoaded('brand') && $this->brand && is_object($this->brand)) {
             return [
                 'id' => $this->brand->id,
@@ -55,7 +58,7 @@ class ProductResource extends JsonResource
             ];
         }
 
-        // If brand_id exists but relationship not loaded, fetch it
+        // If brand_id exists but relationship not loaded, fetch brand by ID
         if ($this->brand_id) {
             $brand = \App\Models\Brand::find($this->brand_id);
             return $brand ? [
@@ -72,20 +75,15 @@ class ProductResource extends JsonResource
      */
     private function getBrandName()
     {
-        // If brand relationship is loaded and is an object
+        // If brand relationship is loaded and is an object, use it (most efficient)
         if ($this->relationLoaded('brand') && $this->brand && is_object($this->brand)) {
             return $this->brand->brand_name;
         }
 
-        // If brand_id exists but relationship not loaded, fetch it
+        // If brand_id exists but relationship not loaded, fetch brand by ID
         if ($this->brand_id) {
             $brand = \App\Models\Brand::find($this->brand_id);
             return $brand ? $brand->brand_name : null;
-        }
-
-        // Fallback to the old string brand field if it exists
-        if (isset($this->attributes['brand']) && is_string($this->attributes['brand'])) {
-            return $this->attributes['brand'];
         }
 
         return null;

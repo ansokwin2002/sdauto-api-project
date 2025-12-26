@@ -27,8 +27,6 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'images' => 'array',
-        'videos' => 'array',
         'original_price' => 'decimal:2',
         'price' => 'decimal:2',
         'is_active' => 'boolean',
@@ -39,7 +37,7 @@ class Product extends Model
     protected $dates = ['deleted_at'];
 
     // ==================== SCOPES ====================
-    
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -79,6 +77,64 @@ class Product extends Model
 
     // ==================== ATTRIBUTES ====================
 
+    public function setImagesAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['images'] = json_encode($value, JSON_UNESCAPED_SLASHES);
+        } else {
+            $decoded = json_decode($value);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $this->attributes['images'] = json_encode($decoded, JSON_UNESCAPED_SLASHES);
+            } else {
+                $this->attributes['images'] = $value;
+            }
+        }
+    }
+
+    public function getImagesAttribute($value)
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        $images = json_decode($value, true);
+
+        if (is_string($images)) {
+            $images = json_decode($images, true);
+        }
+
+        return is_array($images) ? $images : [];
+    }
+
+    public function setVideosAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['videos'] = json_encode($value, JSON_UNESCAPED_SLASHES);
+        } else {
+            $decoded = json_decode($value);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $this->attributes['videos'] = json_encode($decoded, JSON_UNESCAPED_SLASHES);
+            } else {
+                $this->attributes['videos'] = $value;
+            }
+        }
+    }
+
+    public function getVideosAttribute($value)
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        $videos = json_decode($value, true);
+
+        if (is_string($videos)) {
+            $videos = json_decode($videos, true);
+        }
+
+        return is_array($videos) ? $videos : [];
+    }
+
     public function getFormattedPriceAttribute()
     {
         return '$' . number_format($this->price, 2);
@@ -94,7 +150,7 @@ class Product extends Model
         if (!$this->original_price || $this->original_price <= $this->price) {
             return 0;
         }
-        
+
         return round((($this->original_price - $this->price) / $this->original_price) * 100, 1);
     }
 
@@ -103,7 +159,7 @@ class Product extends Model
         if (!$this->original_price || $this->original_price <= $this->price) {
             return 0;
         }
-        
+
         return $this->original_price - $this->price;
     }
 
