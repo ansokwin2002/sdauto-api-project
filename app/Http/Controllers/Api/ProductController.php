@@ -275,8 +275,15 @@ class ProductController extends Controller
             if ($request->has('deleted_images') || $request->hasFile('images') || $request->has('image_urls')) {
                 $currentImages = $product->images ?? [];
 
-                // Remove deleted images
-                if ($request->has('deleted_images')) {
+                // If new files are being uploaded, follow "slider logic" and replace all existing images.
+                if ($request->hasFile('images')) {
+                    foreach ($currentImages as $imageToDelete) {
+                        $this->deleteFileIfExists($imageToDelete);
+                    }
+                    $currentImages = []; // Empty the array of old images
+                }
+                // Otherwise, handle explicit deletions if provided.
+                else if ($request->has('deleted_images')) {
                     $urlsToDelete = $request->input('deleted_images');
                     $relativePathsToDelete = array_map(function($url) {
                         return $this->convertToRelativePath($url);
