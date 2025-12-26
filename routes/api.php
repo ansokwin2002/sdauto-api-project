@@ -16,8 +16,6 @@ use App\Http\Controllers\Api\CategoryBrandController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ShippingController;
 
-Route::get('/debug-storage', [ProductController::class, 'debugStorage']); // Temporary debug route
-
 /*
 |--------------------------------------------------------------------------
 | API Routes

@@ -158,6 +158,12 @@ class ProductController extends Controller
             }
 
             if ($request->hasFile('images')) {
+                // Ensure the products directory exists in storage/app/public
+                $productsPath = storage_path('app/public/products');
+                if (!\Illuminate\Support\Facades\File::exists($productsPath)) {
+                    \Illuminate\Support\Facades\File::makeDirectory($productsPath, 0755, true);
+                }
+
                 foreach ($request->file('images') as $image) {
                     $path = $image->store('products', 'public');
                     $imagePaths[] = 'storage/' . $path;
@@ -274,6 +280,12 @@ class ProductController extends Controller
 
                 // Add newly uploaded images
                 if ($request->hasFile('images')) {
+                    // Ensure the products directory exists in storage/app/public
+                    $productsPath = storage_path('app/public/products');
+                    if (!\Illuminate\Support\Facades\File::exists($productsPath)) {
+                        \Illuminate\Support\Facades\File::makeDirectory($productsPath, 0755, true);
+                    }
+                    
                     foreach ($request->file('images') as $image) {
                         $path = $image->store('products', 'public');
                         $newImagePaths[] = 'storage/' . $path;
@@ -872,69 +884,5 @@ class ProductController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
-    }
-
-    /**
-     * Temporary method to debug storage issues.
-     */
-    public function debugStorage()
-    {
-        $log = [];
-        $log[] = 'Storage Debug Log';
-        $log[] = '-----------------';
-
-        try {
-            $log[] = 'Web server user: ' . exec('whoami');
-        } catch (\Exception $e) {
-            $log[] = 'Could not determine web server user. `exec` might be disabled. Error: ' . $e->getMessage();
-        }
-
-        $publicPath = storage_path('app/public');
-        $log[] = 'Storage path: ' . $publicPath;
-
-        if (!file_exists($publicPath)) {
-            $log[] = 'The directory storage/app/public does not exist.';
-            return response()->json($log);
-        }
-
-        try {
-            $permissions = substr(sprintf('%o', fileperms($publicPath)), -4);
-            $log[] = 'Permissions for storage/app/public: ' . $permissions;
-
-            if (is_writable($publicPath)) {
-                $log[] = 'SUCCESS: storage/app/public is writable.';
-            } else {
-                $log[] = 'ERROR: storage/app/public is NOT writable.';
-            }
-
-            $testDir = $publicPath . '/products';
-            $log[] = 'Checking if `products` subdirectory can be created...';
-
-            if (!file_exists($testDir)) {
-                $log[] = '`products` directory does not exist, attempting to create it.';
-                // Temporarily suppress errors to capture them manually
-                if (@mkdir($testDir, 0775, true)) {
-                    $log[] = 'SUCCESS: Created `products` directory.';
-                    rmdir($testDir); // Clean up
-                    $log[] = 'Cleaned up `products` directory.';
-                } else {
-                    $error = error_get_last();
-                    $log[] = 'ERROR: Failed to create `products` directory.';
-                    if ($error) {
-                        $log[] = 'REASON: ' . $error['message'];
-                    }
-                }
-            } else {
-                 $log[] = '`products` directory already exists.';
-            }
-
-        } catch (\Exception $e) {
-            $log[] = 'An exception occurred during checks: ' . $e->getMessage();
-        }
-
-        $log[] = '-----------------';
-        $log[] = 'Debug finished.';
-
-        return response()->json($log);
     }
 }
