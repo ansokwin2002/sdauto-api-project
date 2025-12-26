@@ -13,9 +13,35 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class ProductController extends Controller
 {
+    /**
+     * Copy storage/app/public -> public/storage (no symlink required)
+     */
+    private function syncPublicStorage(): void
+    {
+        $from = storage_path('app/public');
+        $to   = public_path('storage');
+
+        // Ensure the public/storage directory exists
+        if (!File::exists($to)) {
+            File::makeDirectory($to, 0755, true);
+        }
+
+        // Ensure the products subdirectory exists in public/storage
+        $productsDir = $to . '/products';
+        if (!File::exists($productsDir)) {
+            File::makeDirectory($productsDir, 0755, true);
+        }
+
+        // Copy all files from storage/app/public to public/storage
+        if (File::exists($from)) {
+            File::copyDirectory($from, $to);
+        }
+    }
+
     /**
      * Display a listing of products
      * GET /api/products
@@ -170,6 +196,9 @@ class ProductController extends Controller
                 }
             }
 
+            // Sync with public/storage
+            $this->syncPublicStorage();
+
             $data['images'] = $imagePaths;
             $videoIds = [];
             if ($request->has('videos')) {
@@ -294,6 +323,9 @@ class ProductController extends Controller
                 
                 // Merge and re-index the array
                 $data['images'] = array_values(array_unique(array_merge($currentImages, $newImagePaths)));
+
+                // Sync with public/storage
+                $this->syncPublicStorage();
             }
 
             // Handle video updates
