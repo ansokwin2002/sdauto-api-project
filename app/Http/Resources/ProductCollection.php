@@ -8,9 +8,14 @@ class ProductCollection extends ResourceCollection
 {
     public function toArray($request)
     {
-        return [
+        $isPaginated = $this->resource instanceof \Illuminate\Pagination\AbstractPaginator;
+
+        $response = [
             'data' => ProductResource::collection($this->collection),
-            'meta' => [
+        ];
+
+        if ($isPaginated) {
+            $response['meta'] = [
                 'total' => $this->total(),
                 'count' => $this->count(),
                 'per_page' => $this->perPage(),
@@ -18,8 +23,10 @@ class ProductCollection extends ResourceCollection
                 'total_pages' => $this->lastPage(),
                 'from' => $this->firstItem(),
                 'to' => $this->lastItem(),
-            ]
-        ];
+            ];
+        }
+
+        return $response;
     }
 
     public function with($request)

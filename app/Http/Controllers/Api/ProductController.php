@@ -134,9 +134,7 @@ class ProductController extends Controller
             $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
 
 
-            // Pagination
-            $perPage = min($request->get('per_page', 10), 100);
-            $products = $query->paginate($perPage);
+            $products = $query->get();
 
             return new ProductCollection($products);
 
