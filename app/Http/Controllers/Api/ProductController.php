@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use App\Rules\YoutubeUrl;
 
 class ProductController extends Controller
 {
@@ -256,6 +257,162 @@ class ProductController extends Controller
      * Update the specified product
      * PUT/PATCH /api/products/{id}
      */
+    // public function update(ProductRequest $request, Product $product)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $data = $request->validated();
+
+    //         // Handle brand logic - if brand string is provided, find or create brand
+    //         if ($request->filled('brand') && !$request->filled('brand_id')) {
+    //             $brand = \App\Models\Brand::firstOrCreate(['brand_name' => $request->input('brand')]);
+    //             $data['brand_id'] = $brand->id;
+    //         }
+
+    //         // Handle image updates
+    //         if ($request->has('deleted_images') || $request->hasFile('images') || $request->has('image_urls')) {
+    //             $currentImages = $product->images ?? [];
+
+    //             // If new files are being uploaded, follow "slider logic" and replace all existing images.
+    //             if ($request->hasFile('images')) {
+    //                 foreach ($currentImages as $imageToDelete) {
+    //                     $this->deleteFileIfExists($imageToDelete);
+    //                 }
+    //                 $currentImages = []; // Empty the array of old images
+    //             }
+    //             // Otherwise, handle explicit deletions if provided.
+    //             else if ($request->has('deleted_images')) {
+    //                 $urlsToDelete = $request->input('deleted_images');
+    //                 $relativePathsToDelete = array_map(function($url) {
+    //                     return $this->convertToRelativePath($url);
+    //                 }, $urlsToDelete);
+
+    //                 $survivingImages = [];
+    //                 foreach ($currentImages as $currentImage) {
+    //                     if (in_array($currentImage, $relativePathsToDelete)) {
+    //                         // This image should be deleted
+    //                         $this->deleteFileIfExists($currentImage);
+    //                     } else {
+    //                         // This image should be kept
+    //                         $survivingImages[] = $currentImage;
+    //                     }
+    //                 }
+    //                 $currentImages = $survivingImages;
+    //             }
+
+    //             $newImagePaths = [];
+    //             // Add new image URLs
+    //             if ($request->has('image_urls')) {
+    //                 $convertedImageUrls = array_map(function($url) {
+    //                     return $this->convertToRelativePath($url);
+    //                 }, $request->input('image_urls'));
+    //                 $newImagePaths = array_merge($newImagePaths, $convertedImageUrls);
+    //             }
+
+    //             // Add newly uploaded images
+    //             if ($request->hasFile('images')) {
+    //                 // Ensure the products directory exists in storage/app/public
+    //                 $productsPath = storage_path('app/public/products');
+    //                 if (!\Illuminate\Support\Facades\File::exists($productsPath)) {
+    //                     \Illuminate\Support\Facades\File::makeDirectory($productsPath, 0755, true);
+    //                 }
+                    
+    //                 foreach ($request->file('images') as $image) {
+    //                     $path = $image->store('products', 'public');
+    //                     $newImagePaths[] = 'storage/' . $path;
+    //                 }
+    //             }
+                
+    //             // Merge and re-index the array
+    //             $data['images'] = array_values(array_unique(array_merge($currentImages, $newImagePaths)));
+
+    //             // Sync with public/storage
+    //             $this->syncPublicStorage();
+    //         }
+
+    //         // Handle video updates
+    //         if ($request->has('deleted_videos') || $request->has('videos')) {
+    //             $currentVideos = $product->videos ?? [];
+
+    //             // Remove deleted videos
+    //             if ($request->has('deleted_videos')) {
+    //                 $videosToDeleteUrls = $request->input('deleted_videos');
+    //                 $videoIdsToDelete = [];
+    //                 foreach ($videosToDeleteUrls as $videoUrl) {
+    //                     $youtubeRule = new YoutubeUrl();
+    //                     $youtubeRule->validate('videos', $videoUrl, function ($message) {}); // Validate and set $this->videoId
+    //                     $videoId = $youtubeRule->videoId();
+    //                     if ($videoId) {
+    //                         $videoIdsToDelete[] = $videoId;
+    //                     }
+    //                 }
+    //                 // Filter out the video IDs that are in the $videoIdsToDelete array
+    //                 $currentVideos = array_filter($currentVideos, function ($videoId) use ($videoIdsToDelete) {
+    //                     return !in_array($videoId, $videoIdsToDelete);
+    //                 });
+    //             }
+
+    //             $newVideoIds = [];
+    //             // Add new video URLs
+    //             if ($request->has('videos')) {
+    //                 foreach ($request->input('videos') as $videoUrl) {
+    //                     $youtubeRule = new YoutubeUrl();
+    //                     $youtubeRule->validate('videos', $videoUrl, function ($message) {});
+    //                     if ($youtubeRule->videoId()) {
+    //                         $newVideoIds[] = $youtubeRule->videoId();
+    //                     }
+    //                 }
+    //             }
+
+    //             // Merge and re-index the array
+    //             $data['videos'] = array_values(array_unique(array_merge($currentVideos, $newVideoIds)));
+    //         }
+
+    //         $product->update($data);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Product updated successfully',
+    //             'data' => new ProductResource($product->fresh())
+    //         ]);
+
+    //     } catch (QueryException $e) {
+    //         DB::rollBack();
+    //         $errorCode = $e->errorInfo[1];
+    //         if ($errorCode == 1062) { // 1062 is the error code for duplicate entry in MySQL
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'The part number already exists for another product.'
+    //             ], 422);
+    //         }
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error updating product',
+    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+    //         ], 500);
+
+    //     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Product not found'
+    //         ], 404);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error updating product',
+    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+    //         ], 500);
+    //     }
+    // }
+
     public function update(ProductRequest $request, Product $product)
     {
         try {
@@ -265,7 +422,9 @@ class ProductController extends Controller
 
             // Handle brand logic - if brand string is provided, find or create brand
             if ($request->filled('brand') && !$request->filled('brand_id')) {
-                $brand = \App\Models\Brand::firstOrCreate(['brand_name' => $request->input('brand')]);
+                $brand = \App\Models\Brand::firstOrCreate([
+                    'brand_name' => $request->input('brand')
+                ]);
                 $data['brand_id'] = $brand->id;
             }
 
@@ -273,27 +432,25 @@ class ProductController extends Controller
             if ($request->has('deleted_images') || $request->hasFile('images') || $request->has('image_urls')) {
                 $currentImages = $product->images ?? [];
 
-                // If new files are being uploaded, follow "slider logic" and replace all existing images.
+                // If new files are being uploaded, replace all existing images
                 if ($request->hasFile('images')) {
                     foreach ($currentImages as $imageToDelete) {
                         $this->deleteFileIfExists($imageToDelete);
                     }
-                    $currentImages = []; // Empty the array of old images
+                    $currentImages = [];
                 }
-                // Otherwise, handle explicit deletions if provided.
+                // Handle explicit deletions
                 else if ($request->has('deleted_images')) {
                     $urlsToDelete = $request->input('deleted_images');
-                    $relativePathsToDelete = array_map(function($url) {
+                    $relativePathsToDelete = array_map(function ($url) {
                         return $this->convertToRelativePath($url);
                     }, $urlsToDelete);
 
                     $survivingImages = [];
                     foreach ($currentImages as $currentImage) {
                         if (in_array($currentImage, $relativePathsToDelete)) {
-                            // This image should be deleted
                             $this->deleteFileIfExists($currentImage);
                         } else {
-                            // This image should be kept
                             $survivingImages[] = $currentImage;
                         }
                     }
@@ -301,67 +458,50 @@ class ProductController extends Controller
                 }
 
                 $newImagePaths = [];
+
                 // Add new image URLs
                 if ($request->has('image_urls')) {
-                    $convertedImageUrls = array_map(function($url) {
+                    $convertedImageUrls = array_map(function ($url) {
                         return $this->convertToRelativePath($url);
                     }, $request->input('image_urls'));
                     $newImagePaths = array_merge($newImagePaths, $convertedImageUrls);
                 }
 
-                // Add newly uploaded images
+                // Add uploaded images
                 if ($request->hasFile('images')) {
-                    // Ensure the products directory exists in storage/app/public
                     $productsPath = storage_path('app/public/products');
                     if (!\Illuminate\Support\Facades\File::exists($productsPath)) {
                         \Illuminate\Support\Facades\File::makeDirectory($productsPath, 0755, true);
                     }
-                    
+
                     foreach ($request->file('images') as $image) {
                         $path = $image->store('products', 'public');
                         $newImagePaths[] = 'storage/' . $path;
                     }
                 }
-                
-                // Merge and re-index the array
-                $data['images'] = array_values(array_unique(array_merge($currentImages, $newImagePaths)));
 
-                // Sync with public/storage
+                $data['images'] = array_values(
+                    array_unique(array_merge($currentImages, $newImagePaths))
+                );
+
                 $this->syncPublicStorage();
             }
 
             // Handle video updates
-            if ($request->has('deleted_videos') || $request->has('videos')) {
-                $currentVideos = $product->videos ?? [];
+            if ($request->has('videos')) {
+                $processedVideoIds = [];
 
-                // Remove deleted videos
-                if ($request->has('deleted_videos')) {
-                    $videosToDelete = $request->input('deleted_videos');
-                    foreach ($videosToDelete as $videoUrl) {
-                        $youtubeRule = new YoutubeUrl();
-                        $youtubeRule->validate('videos', $videoUrl, function ($message) {});
-                        $videoIdToDelete = $youtubeRule->videoId();
-
-                        if (($key = array_search($videoIdToDelete, $currentVideos)) !== false) {
-                            unset($currentVideos[$key]);
-                        }
+                foreach ($request->input('videos') as $videoUrl) {
+                    $youtubeRule = new YoutubeUrl();
+                    $youtubeRule->validate('videos', $videoUrl, function () {});
+                    if ($youtubeRule->videoId()) {
+                        $processedVideoIds[] = $youtubeRule->videoId();
                     }
                 }
 
-                $newVideoIds = [];
-                // Add new video URLs
-                if ($request->has('videos')) {
-                    foreach ($request->input('videos') as $videoUrl) {
-                        $youtubeRule = new YoutubeUrl();
-                        $youtubeRule->validate('videos', $videoUrl, function ($message) {});
-                        if ($youtubeRule->videoId()) {
-                            $newVideoIds[] = $youtubeRule->videoId();
-                        }
-                    }
-                }
-
-                // Merge and re-index the array
-                $data['videos'] = array_values(array_unique(array_merge($currentVideos, $newVideoIds)));
+                $data['videos'] = array_values(array_unique($processedVideoIds));
+            } else {
+                $data['videos'] = [];
             }
 
             $product->update($data);
@@ -376,8 +516,8 @@ class ProductController extends Controller
 
         } catch (QueryException $e) {
             DB::rollBack();
-            $errorCode = $e->errorInfo[1];
-            if ($errorCode == 1062) { // 1062 is the error code for duplicate entry in MySQL
+
+            if ($e->errorInfo[1] == 1062) {
                 return response()->json([
                     'success' => false,
                     'message' => 'The part number already exists for another product.'
@@ -397,6 +537,7 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Product not found'
             ], 404);
+
         } catch (\Exception $e) {
             DB::rollBack();
 

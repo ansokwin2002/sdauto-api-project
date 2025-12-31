@@ -27,7 +27,6 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'original_price' => 'decimal:2',
         'price' => 'decimal:2',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
