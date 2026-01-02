@@ -43,11 +43,11 @@ class ProductRequest extends FormRequest
             ],
             'category' => 'nullable|string|max:100',
             'part_number' => [
-                'required',
+                'nullable',
                 'string',
-                'max:100',
                 Rule::unique('products')->ignore($productId)->whereNull('deleted_at')
             ],
+            'part_number_status' => 'nullable|string|max:255',
             'condition' => 'required|in:New,Used,Refurbished',
             'quantity' => 'required|integer|min:0|max:999999',
             'original_price' => 'nullable|numeric|min:0|max:99999999.99',
@@ -81,7 +81,7 @@ class ProductRequest extends FormRequest
             'name.max' => 'Product name cannot exceed 255 characters.',
             'brand.required' => 'Brand is required.',
             'brand.max' => 'Brand cannot exceed 100 characters.',
-            'part_number.required' => 'Part number is required.',
+
             'part_number.unique' => 'Part number already exists.',
             'condition.required' => 'Condition is required.',
             'condition.in' => 'Condition must be New, Used, or Refurbished.',

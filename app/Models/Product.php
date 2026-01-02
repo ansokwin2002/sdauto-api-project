@@ -16,6 +16,7 @@ class Product extends Model
         'brand_id',
         'category',
         'part_number',
+        'part_number_status',
         'condition',
         'quantity',
         'original_price',

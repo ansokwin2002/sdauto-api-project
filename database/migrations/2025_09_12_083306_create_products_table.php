@@ -13,7 +13,7 @@ class CreateProductsTable extends Migration
             $table->string('name');
             $table->string('brand');
             $table->string('category')->nullable();
-            $table->string('part_number')->unique();
+            $table->text('part_number')->unique()->nullable();
             $table->enum('condition', ['New', 'Used', 'Refurbished'])->default('New');
             $table->integer('quantity')->default(0);
             $table->decimal('original_price', 10, 2)->nullable(); // Added original_price (optional)
